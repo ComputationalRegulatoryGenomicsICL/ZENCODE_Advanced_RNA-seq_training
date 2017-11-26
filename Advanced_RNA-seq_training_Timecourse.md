@@ -1,7 +1,7 @@
-Advanced_RNA-seq_training_Timecourse
+Advanced RNA-seq training - Timecourse
 ========================================================
-author: 
-date: 
+author: Damir Baranasic
+date: 01.12.2017
 autosize: true
 
 First Slide
@@ -46,3 +46,69 @@ Slide With Plot
 ========================================================
 
 ![plot of chunk unnamed-chunk-2](Advanced_RNA-seq_training_Timecourse-figure/unnamed-chunk-2-1.png)
+
+RNA-seq
+========================================================
+
+- allele specific expression
+- gene fusion
+- lncRNA
+- eRNA
+- alterantively spliced variants
+
+Time course experiments
+========================================================
+
+1. Single time series
+  - one condition
+  - all time points compared to the first one (control)
+2. Multi time series
+  - several conditions simultaneously
+  - controls are sampled over time with the samples
+3. Periodicity and cyclic time series
+  - sigle or multiple conditions
+  - reoccuring exoression patterns and their difference between conditions
+  - complex --> a lot of samples needed and synchronisation
+  
+Experimental worklflow
+========================================================
+
+Similar to static algorithms
+
+// insert image here
+
+Experimental design
+========================================================
+
+Critical:
+  - number of time points
+  - number of replicates
+  
+cost ~ statistical power
+
+- there are tools to estimate this parameters, but they don't consider multi-factor experiments
+
+Generaly, when in doubt:
+  - more replicates better than greater sequencing depth
+  
+Bad design:
+  - - statistical power
+  - + number of FP
+  
+Analysis
+========================================================
+
+Static tools:
+  - sequencing depth and library size
+  - batch effect --> protocol, sequencing platform, technical variability etc.
+  
+Do not consider Correlation between neighbouring time points!
+
+Questions for analysis
+========================================================
+
+Number of replicates?
+
+Experimantal design? (two-way or multi-factor)
+
+Differential expression of RNA isoforms?
