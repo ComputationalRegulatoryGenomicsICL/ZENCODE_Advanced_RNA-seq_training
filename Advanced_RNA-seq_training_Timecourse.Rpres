@@ -4,15 +4,6 @@ author: Damir Baranasic
 date: 01.12.2017
 autosize: true
 
-First Slide
-========================================================
-
-For more details on authoring R presentations please visit <https://support.rstudio.com/hc/en-us/articles/200486468>.
-
-- Bullet 1
-- Bullet 2
-- Bullet 3
-
 Installed packages
 ========================================================
 
@@ -103,3 +94,68 @@ Number of replicates?
 Experimantal design? (two-way or multi-factor)
 
 Differential expression of RNA isoforms?
+
+Data used in this case study
+========================================================
+
+## Christelle Etard, Olivier Armant, Urmas Roostalu, Victor Gourain, Marco Ferg and Uwe Strähle
+
+# Loss of function of myosin chaperones triggers Hsf1-mediated transcriptional response in skeletal muscle cells
+
+*Genome Biology* 2015 **16**:267 <https://doi.org/10.1186/s13059-015-0825-8>
+
+```
+RNA-seq_Strahle_Lab_0005AS.<SequencingID>.USERvgourain.R.ReadsPerGene.out.tab
+```
+
+|Hpf |      wt     |    unc45b   |
+|:--:|:-----------:|:-----------:|
+| 24 | DCD001548SQ | DCD001560SQ |
+|    | DCD001559SQ | DCD001554SQ |
+| 48 | DCD001546SQ | DCD001564SQ |
+|    | DCD001558SQ | DCD001555SQ |
+| 72 | DCD001547SQ | DCD001565SQ |
+|    | DCD001545SQ | DCD001551SQ |
+
+All the libraries were unstranded paired-ended sequenced on Illumina HiSeq 2000 producing 50bp long reads
+
+Read the reads per gene counts
+========================================================
+
+```{r tidy=TRUE}
+seq_ids = c("DCD001548SQ", "DCD001559SQ", "DCD001546SQ", "DCD001558SQ", "DCD001547SQ", "DCD001545SQ",
+            "DCD001560SQ", "DCD001554SQ", "DCD001564SQ", "DCD001555SQ", "DCD001565SQ", "DCD001551SQ")
+files = sapply(seq_ids, function(x) paste("data/RNA-seq_Strahle_Lab_0005AS.", x, ".USERvgourain.R.ReadsPerGene.out.tab", sep = ""), USE.NAMES = FALSE)
+head(files, n = 4)
+readTagsPerGene <- function(x){
+  out <- read.csv(x, skip = 4, header = FALSE, sep = "\t", row.names = 1,
+                  col.names = c("","totalCount", "forwardCount", "reverseCount"))
+  out
+}
+allReadsCounts <- lapply(files, readTagsPerGene)
+geneNames <- row.names(allReadsCounts[[1]])
+totalReadsCount <- sapply(allReadsCounts, function(x) x$totalCount)
+rownames(totalReadsCount) <- geneNames
+head(totalReadsCount, n = 2)
+
+```
+
+Make design matrix
+========================================================
+
+```{r tidy = TRUE}
+
+type <- rep(c("wt", "mut"), each = 6)
+type
+repl <- rep(c("1", "2"), times = 6)
+repl
+time = rep(c("24", "48", "72"), each = 2, times = 2)
+time
+sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
+head(sample)
+#files <- setNames(files, sample)
+coldata <- data.frame(condition = type, time = time)
+row.names(coldata) <- sample
+head(coldata)
+
+```
