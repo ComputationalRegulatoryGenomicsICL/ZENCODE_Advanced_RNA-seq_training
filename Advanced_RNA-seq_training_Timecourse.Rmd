@@ -10,6 +10,17 @@ output:
     toc_float: true
 ---
 
+# Load required packages
+
+Before we start the analysis, we will first load all the packages needed. 
+
+```{r tidy=TRUE}
+
+library("DESeq2")
+library("maSigPro")
+
+```
+
 # Data preparation
 
 First we need to prepare the data for the analysis. This includes reading the counts for each sample and making the matrix with sample description.
@@ -50,7 +61,7 @@ When we have a list of files with the sample description, we will can read the c
 The files with read counts are formated in the following manner:
 
 ```{r tidy=TRUE}
-system("head data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab")
+print(system("head data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab"))
 ```
 
 The first four lines contain the global mapping statistics. For our purpose, we can just skip them. The counts start on the fifth line. The first column are the gene identifiers, the second represents the total counts per gene, while the third and the fourth column represent the strand specific counts. To facilitate parcing of all twelve files in our case study, we can make a simple helper function, which will read the counts in an R data frame. The function is just a wrap around the `read.csv` function from the `utils` package. It has a argument for naming the columns.
@@ -70,6 +81,110 @@ Now we can iterate through all the files and extract the counts with `lapply` us
 ```{r tidy=TRUE}
 
 allReadsCounts <- lapply(files, readTagsPerGene)
-head(allReadsCounts)
+head(allReadsCounts[[1]])
+
+```
+
+Since the library is unstranded, we need only the total reads count. We can extract it and put it in a matrix. The column names will be the sample names we created previously, and the row names will be the gene identifiers. The gene order is consistent through all the samples, so it is safe, for simplicity sake to take only one to name the matrix.
+
+```{r tidy=TRUE}
+
+totalReadsCount <- sapply(allReadsCounts, function(x) x$totalCount)
+rownames(totalReadsCount) <- row.names(allReadsCounts[[1]])
+head(totalReadsCount)
+
+```
+
+## Make a matrix with the experimental design
+
+Before the analysis, we need to normalise the data to address for the biases in the library preparation. For data normalisation we will use the `DESeq2` package. The package also require an additional matrix which describes the data design. The design matrix has sample names as rows and sample features as columns. The features we will use are already defined in the `time` and `type` vectors.
+
+```{r tidy=TRUE}
+
+coldata <- data.frame(condition = type, time = time)
+row.names(coldata) <- sample
+head(coldata)
+
+```
+
+# Data normalisation
+ 
+ 
+```{r tidy = TRUE}
+
+dds <- DESeqDataSetFromMatrix(countData = totalReadsCount, colData = coldata, design = ~ time + condition)
+head(dds)
+dds <- DESeq(dds)
+head(dds)
+normalizedData <- counts(dds, normalized = TRUE)
+head(normalizedData)
+
+```
+
+# Differential expression with `maSigPro`
+
+Here will go a short description and the figure with the pipline
+
+## Experimental design in `maSigPro` format
+
+`maSigPro` takes a specific matrix format for the experimental design. As with `DESeq2`, `maSigPro` uses the format of samples represented in rows and features in columns. The first two columns are Time and Replicate. Obviusly, the Time variable represent the time points of the experiments. The Replicate column represent replicates in a way that samples with the same condition, therefore replicates, share the same number. In our case, we have 3 time points and 2 types (wild type and mutant), so in total 6 different conditions. Each condition has 2 replicates, resulting in 12 samples. The last two columns represent the Control and Mutant, each containing a binary identifier. We will load the example to show how this should look like.
+
+```{r tidy=TRUE}
+
+data(edesign.abiotic)
+data(data.abiotic)
+
+head(data.abiotic)
+head(normalizedData)
+
+head(edesign.abiotic)
+
+exp_design <- data.frame(Time = rep(c(24, 48, 72), each = 2, times = 2),
+                         Replicate = rep(c(1:6), each = 2),
+                         Control = rep(c(1, 0), each = 6),
+                         Mutant = rep(c(0, 1), each = 6),
+                         row.names = sample)
+
+head(exp_design)
+
+```
+
+## Defining the regression model
+
+With the data in the correct format, we are able now to define the regression model. Since we have three time points, our model will be a polynome of a second degree to prevent overfitting. The regression model is defined with the function `make.design.matrix`, which takes the experimental design data frame and the polynomial degree as inputs. It outputs a list containing 
+
+```{r tidy=TRUE}
+
+design <- make.design.matrix(exp_design, degree = 2)
+str(design)
+head(design$dis)
+head(design$groups.vector)
+
+```
+
+## Finding significant genes
+
+model --> F-Statistic --> p-val --> B-H FDR (Q), by default = 0.05
+
+p.vector args: expression values, model list, FDR control, multiple comparison correction method, min counts for gene to be included in the analysis, if the data are counts, distribution family (NB), NB parameters
+
+number of significant genes --> i
+alpha --> p-val at Q
+SELEC --> sig genes and their expression levels
+
+```{r tidy=TRUE, cache=TRUE, echo=FALSE}
+
+fit <- p.vector(normalizedData, design, Q = 0.05, MT.adjust = "BH", min.obs = 10)
+str(fit)
+
+```
+
+## Finding significant differences
+
+...
+
+```{r tidy=TRUE, cached=TRUE}
+
+tstep <- T.fit(fit, step.method = "backward", alfa = 0.05)
 
 ```

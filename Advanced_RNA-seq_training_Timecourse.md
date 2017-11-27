@@ -202,7 +202,7 @@ time
 
 ```r
 sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
-totalReadsCount <- setNames(totalReadsCount, sample)
+colnames(totalReadsCount) <- sample
 coldata <- data.frame(condition = type, time = time)
 row.names(coldata) <- sample
 head(coldata, n = 4)

@@ -225,15 +225,76 @@ div.tocify {
 </div>
 
 
+<div id="load-required-packages" class="section level1">
+<h1><span class="header-section-number">1</span> Load required packages</h1>
+<p>Before we start the analysis, we will first load all the packages needed.</p>
+<pre class="r"><code>library(&quot;DESeq2&quot;)</code></pre>
+<pre><code>## Loading required package: S4Vectors</code></pre>
+<pre><code>## Loading required package: stats4</code></pre>
+<pre><code>## Loading required package: BiocGenerics</code></pre>
+<pre><code>## Loading required package: parallel</code></pre>
+<pre><code>## 
+## Attaching package: 'BiocGenerics'</code></pre>
+<pre><code>## The following objects are masked from 'package:parallel':
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB</code></pre>
+<pre><code>## The following objects are masked from 'package:stats':
+## 
+##     IQR, mad, sd, var, xtabs</code></pre>
+<pre><code>## The following objects are masked from 'package:base':
+## 
+##     anyDuplicated, append, as.data.frame, cbind, colMeans,
+##     colnames, colSums, do.call, duplicated, eval, evalq, Filter,
+##     Find, get, grep, grepl, intersect, is.unsorted, lapply,
+##     lengths, Map, mapply, match, mget, order, paste, pmax,
+##     pmax.int, pmin, pmin.int, Position, rank, rbind, Reduce,
+##     rowMeans, rownames, rowSums, sapply, setdiff, sort, table,
+##     tapply, union, unique, unsplit, which, which.max, which.min</code></pre>
+<pre><code>## 
+## Attaching package: 'S4Vectors'</code></pre>
+<pre><code>## The following object is masked from 'package:base':
+## 
+##     expand.grid</code></pre>
+<pre><code>## Loading required package: IRanges</code></pre>
+<pre><code>## Loading required package: GenomicRanges</code></pre>
+<pre><code>## Loading required package: GenomeInfoDb</code></pre>
+<pre><code>## Loading required package: SummarizedExperiment</code></pre>
+<pre><code>## Loading required package: Biobase</code></pre>
+<pre><code>## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     'browseVignettes()'. To cite Bioconductor, see
+##     'citation(&quot;Biobase&quot;)', and for packages 'citation(&quot;pkgname&quot;)'.</code></pre>
+<pre><code>## Loading required package: DelayedArray</code></pre>
+<pre><code>## Loading required package: matrixStats</code></pre>
+<pre><code>## 
+## Attaching package: 'matrixStats'</code></pre>
+<pre><code>## The following objects are masked from 'package:Biobase':
+## 
+##     anyMissing, rowMedians</code></pre>
+<pre><code>## 
+## Attaching package: 'DelayedArray'</code></pre>
+<pre><code>## The following objects are masked from 'package:matrixStats':
+## 
+##     colMaxs, colMins, colRanges, rowMaxs, rowMins, rowRanges</code></pre>
+<pre><code>## The following object is masked from 'package:base':
+## 
+##     apply</code></pre>
+<pre class="r"><code>library(&quot;maSigPro&quot;)</code></pre>
+</div>
 <div id="data-preparation" class="section level1">
-<h1><span class="header-section-number">1</span> Data preparation</h1>
+<h1><span class="header-section-number">2</span> Data preparation</h1>
 <p>First we need to prepare the data for the analysis. This includes reading the counts for each sample and making the matrix with sample description.</p>
 <div id="make-a-list-of-files" class="section level2">
-<h2><span class="header-section-number">1.1</span> Make a list of files</h2>
+<h2><span class="header-section-number">2.1</span> Make a list of files</h2>
 <p>All the files are in the <code>data/</code> subfolder of the project. As mentioned previously all the namings follow a convention. First of all we have to make the list of all files used. We will read them in a specific order so that we know for each file to which sample belongs to.</p>
-<pre class="r"><code>seq_ids = c(&quot;DCD001548SQ&quot;, &quot;DCD001559SQ&quot;, &quot;DCD001546SQ&quot;, &quot;DCD001558SQ&quot;, &quot;DCD001547SQ&quot;, &quot;DCD001545SQ&quot;,
-            &quot;DCD001560SQ&quot;, &quot;DCD001554SQ&quot;, &quot;DCD001564SQ&quot;, &quot;DCD001555SQ&quot;, &quot;DCD001565SQ&quot;, &quot;DCD001551SQ&quot;)
-files = sapply(seq_ids, function(x) paste(&quot;data/RNA-seq_Strahle_Lab_0005AS.&quot;, x, &quot;.USERvgourain.R.ReadsPerGene.out.tab&quot;, sep = &quot;&quot;), USE.NAMES = FALSE)
+<pre class="r"><code>seq_ids = c(&quot;DCD001548SQ&quot;, &quot;DCD001559SQ&quot;, &quot;DCD001546SQ&quot;, &quot;DCD001558SQ&quot;, &quot;DCD001547SQ&quot;, 
+    &quot;DCD001545SQ&quot;, &quot;DCD001560SQ&quot;, &quot;DCD001554SQ&quot;, &quot;DCD001564SQ&quot;, &quot;DCD001555SQ&quot;, 
+    &quot;DCD001565SQ&quot;, &quot;DCD001551SQ&quot;)
+files = sapply(seq_ids, function(x) paste(&quot;data/RNA-seq_Strahle_Lab_0005AS.&quot;, 
+    x, &quot;.USERvgourain.R.ReadsPerGene.out.tab&quot;, sep = &quot;&quot;), USE.NAMES = FALSE)
 head(files)</code></pre>
 <pre><code>## [1] &quot;data/RNA-seq_Strahle_Lab_0005AS.DCD001548SQ.USERvgourain.R.ReadsPerGene.out.tab&quot;
 ## [2] &quot;data/RNA-seq_Strahle_Lab_0005AS.DCD001559SQ.USERvgourain.R.ReadsPerGene.out.tab&quot;
@@ -269,20 +330,706 @@ head(files)</code></pre>
 ## &quot;data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab&quot;</code></pre>
 </div>
 <div id="read-the-reads-per-gene-counts" class="section level2">
-<h2><span class="header-section-number">1.2</span> Read the reads per gene counts</h2>
+<h2><span class="header-section-number">2.2</span> Read the reads per gene counts</h2>
 <p>When we have a list of files with the sample description, we will can read the counts from the file.</p>
 <p>The files with read counts are formated in the following manner:</p>
-<pre class="bash"><code>head data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab</code></pre>
-<pre><code>## N_unmapped   1150343 1150343 1150343
-## N_multimapping   6528951 6528951 6528951
-## N_noFeature  5208900 23323138    23435853
-## N_ambiguous  1011496 219186  215426
-## ENSDARG00000104632   27  16  14
-## ENSDARG00000100660   98  51  48
-## ENSDARG00000098417   48  27  22
-## ENSDARG00000100422   4445    2184    2280
-## ENSDARG00000102128   286 141 147
-## ENSDARG00000103095   1661    802 866</code></pre>
+<pre class="r"><code>print(system(&quot;head data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab&quot;))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<p>The first four lines contain the global mapping statistics. For our purpose, we can just skip them. The counts start on the fifth line. The first column are the gene identifiers, the second represents the total counts per gene, while the third and the fourth column represent the strand specific counts. To facilitate parcing of all twelve files in our case study, we can make a simple helper function, which will read the counts in an R data frame. The function is just a wrap around the <code>read.csv</code> function from the <code>utils</code> package. It has a argument for naming the columns.</p>
+<pre class="r"><code>readTagsPerGene &lt;- function(x) {
+    out &lt;- read.csv(x, skip = 4, header = FALSE, sep = &quot;\t&quot;, row.names = 1, 
+        col.names = c(&quot;&quot;, &quot;totalCount&quot;, &quot;forwardCount&quot;, &quot;reverseCount&quot;))
+    out
+}</code></pre>
+<p>Now we can iterate through all the files and extract the counts with <code>lapply</code> using the function we just defined.</p>
+<pre class="r"><code>allReadsCounts &lt;- lapply(files, readTagsPerGene)
+head(allReadsCounts[[1]])</code></pre>
+<pre><code>##                    totalCount forwardCount reverseCount
+## ENSDARG00000104632        100           57           49
+## ENSDARG00000100660        153           78           81
+## ENSDARG00000098417         46           29           21
+## ENSDARG00000100422       9869         4920         4993
+## ENSDARG00000102128        866          451          419
+## ENSDARG00000103095       1636          823          822</code></pre>
+<p>Since the library is unstranded, we need only the total reads count. We can extract it and put it in a matrix. The column names will be the sample names we created previously, and the row names will be the gene identifiers. The gene order is consistent through all the samples, so it is safe, for simplicity sake to take only one to name the matrix.</p>
+<pre class="r"><code>totalReadsCount &lt;- sapply(allReadsCounts, function(x) x$totalCount)
+rownames(totalReadsCount) &lt;- row.names(allReadsCounts[[1]])
+head(totalReadsCount)</code></pre>
+<pre><code>##                    wt_24_1 wt_24_2 wt_48_1 wt_48_2 wt_72_1 wt_72_2
+## ENSDARG00000104632     100      70      67      30      48      27
+## ENSDARG00000100660     153     107     110      81      74      98
+## ENSDARG00000098417      46      24      44      37      24      48
+## ENSDARG00000100422    9869    6558    5453    3516    3203    4445
+## ENSDARG00000102128     866     578     397     233     363     286
+## ENSDARG00000103095    1636    1113    1138     660    1524    1661
+##                    mut_24_1 mut_24_2 mut_48_1 mut_48_2 mut_72_1 mut_72_2
+## ENSDARG00000104632       75       69       44       26       44       54
+## ENSDARG00000100660      107      131       72       42      118      167
+## ENSDARG00000098417       32       32       63       10       29       41
+## ENSDARG00000100422     7348     7749     4836     2406     3513     3922
+## ENSDARG00000102128      799      703      462      250      401      405
+## ENSDARG00000103095     1266     1285     1146      621     1415     1755</code></pre>
+</div>
+<div id="make-a-matrix-with-the-experimental-design" class="section level2">
+<h2><span class="header-section-number">2.3</span> Make a matrix with the experimental design</h2>
+<p>Before the analysis, we need to normalise the data to address for the biases in the library preparation. For data normalisation we will use the <code>DESeq2</code> package. The package also require an additional matrix which describes the data design. The design matrix has sample names as rows and sample features as columns. The features we will use are already defined in the <code>time</code> and <code>type</code> vectors.</p>
+<pre class="r"><code>coldata &lt;- data.frame(condition = type, time = time)
+row.names(coldata) &lt;- sample
+head(coldata)</code></pre>
+<pre><code>##         condition time
+## wt_24_1        wt   24
+## wt_24_2        wt   24
+## wt_48_1        wt   48
+## wt_48_2        wt   48
+## wt_72_1        wt   72
+## wt_72_2        wt   72</code></pre>
+</div>
+</div>
+<div id="data-normalisation" class="section level1">
+<h1><span class="header-section-number">3</span> Data normalisation</h1>
+<pre class="r"><code>dds &lt;- DESeqDataSetFromMatrix(countData = totalReadsCount, colData = coldata, 
+    design = ~time + condition)
+head(dds)</code></pre>
+<pre><code>## class: DESeqDataSet 
+## dim: 6 12 
+## metadata(1): version
+## assays(1): counts
+## rownames(6): ENSDARG00000104632 ENSDARG00000100660 ...
+##   ENSDARG00000102128 ENSDARG00000103095
+## rowData names(0):
+## colnames(12): wt_24_1 wt_24_2 ... mut_72_1 mut_72_2
+## colData names(2): condition time</code></pre>
+<pre class="r"><code>dds &lt;- DESeq(dds)</code></pre>
+<pre><code>## estimating size factors</code></pre>
+<pre><code>## estimating dispersions</code></pre>
+<pre><code>## gene-wise dispersion estimates</code></pre>
+<pre><code>## mean-dispersion relationship</code></pre>
+<pre><code>## final dispersion estimates</code></pre>
+<pre><code>## fitting model and testing</code></pre>
+<pre class="r"><code>head(dds)</code></pre>
+<pre><code>## class: DESeqDataSet 
+## dim: 6 12 
+## metadata(1): version
+## assays(3): counts mu cooks
+## rownames(6): ENSDARG00000104632 ENSDARG00000100660 ...
+##   ENSDARG00000102128 ENSDARG00000103095
+## rowData names(29): baseMean baseVar ... deviance maxCooks
+## colnames(12): wt_24_1 wt_24_2 ... mut_72_1 mut_72_2
+## colData names(3): condition time sizeFactor</code></pre>
+<pre class="r"><code>normalizedData &lt;- counts(dds, normalized = TRUE)
+head(normalizedData)</code></pre>
+<pre><code>##                       wt_24_1    wt_24_2    wt_48_1    wt_48_2    wt_72_1
+## ENSDARG00000104632   57.08065   56.05454   73.11288   43.15282   48.56405
+## ENSDARG00000100660   87.33339   85.68336  120.03608  116.51263   74.86957
+## ENSDARG00000098417   26.25710   19.21870   48.01443   53.22182   24.28202
+## ENSDARG00000100422 5633.28892 5251.50941 5950.51563 5057.51101 3240.63835
+## ENSDARG00000102128  494.31839  462.85033  433.22111  335.15360  367.26560
+## ENSDARG00000103095  933.83936  891.26715 1241.82776  949.36214 1541.90848
+##                       wt_72_2   mut_24_1   mut_24_2   mut_48_1   mut_48_2
+## ENSDARG00000104632   22.52972   59.92538   52.35225   50.81931   51.31421
+## ENSDARG00000100660   81.77453   85.49354   99.39340   83.15888   82.89218
+## ENSDARG00000098417   40.05283   25.56816   24.27930   72.76402   19.73623
+## ENSDARG00000100422 3709.05921 5871.08876 5879.38509 5585.50460 4748.53774
+## ENSDARG00000102128  238.64813  638.40500  533.38595  533.60280  493.40583
+## ENSDARG00000103095 1385.99490 1011.54033  974.96578 1323.61213 1225.62009
+##                      mut_72_1   mut_72_2
+## ENSDARG00000104632   49.84316   51.89721
+## ENSDARG00000100660  133.67030  160.49693
+## ENSDARG00000098417   32.85118   39.40344
+## ENSDARG00000100422 3979.52337 3769.27512
+## ENSDARG00000102128  454.25245  389.22907
+## ENSDARG00000103095 1602.91078 1686.65932</code></pre>
+</div>
+<div id="differential-expression-with-masigpro" class="section level1">
+<h1><span class="header-section-number">4</span> Differential expression with <code>maSigPro</code></h1>
+<p>Here will go a short description and the figure with the pipline</p>
+<div id="experimental-design-in-masigpro-format" class="section level2">
+<h2><span class="header-section-number">4.1</span> Experimental design in <code>maSigPro</code> format</h2>
+<p><code>maSigPro</code> takes a specific matrix format for the experimental design. As with <code>DESeq2</code>, <code>maSigPro</code> uses the format of samples represented in rows and features in columns. The first two columns are Time and Replicate. Obviusly, the Time variable represent the time points of the experiments. The Replicate column represent replicates in a way that samples with the same condition, therefore replicates, share the same number. In our case, we have 3 time points and 2 types (wild type and mutant), so in total 6 different conditions. Each condition has 2 replicates, resulting in 12 samples. The last two columns represent the Control and Mutant, each containing a binary identifier. We will load the example to show how this should look like.</p>
+<pre class="r"><code>data(edesign.abiotic)
+data(data.abiotic)
+
+head(data.abiotic)</code></pre>
+<pre><code>##         Control_3H_1 Control_3H_2 Control_3H_3 Control_9H_1 Control_9H_2
+## STMDF90   0.13735714  -0.36530651  -0.15329448   0.44754535  0.287476796
+## STMCJ24           NA           NA           NA           NA           NA
+## STMJH42   0.07864449   0.10023285  -0.17365488  -0.25279484  0.184855409
+## STMDE66   0.22976991   0.47409748   0.46930716   0.37101059 -0.004992029
+## STMIX74   0.14407618  -0.48018637  -0.07847999   0.05692331  0.013045420
+## STMCL34   0.06494078   0.04472986   0.04280790   0.16128091  0.088048892
+##         Control_9H_3 Control_27H_1 Control_27H_2 Control_27H_3  Cold_3H_1
+## STMDF90  0.248818724   0.179325865    0.12799310   -0.11734684  1.0565554
+## STMCJ24           NA            NA            NA   -0.48580961         NA
+## STMJH42 -0.118319967  -0.148218361   -0.09114789   -0.27132618 -0.1697002
+## STMDE66  0.002459839  -0.003879953    0.26182764    0.29449032 -1.9084427
+## STMIX74  0.076794351  -0.128584206    0.19345354    0.10940092  0.2686839
+## STMCL34  0.277007348   0.046143427    0.16275591    0.05627787 -0.0523912
+##           Cold_3H_2   Cold_3H_3  Cold_9H_1   Cold_9H_2  Cold_9H_3
+## STMDF90  0.39489210  0.38842026  0.8910656  0.95504186  0.8122386
+## STMCJ24          NA          NA         NA          NA         NA
+## STMJH42  0.36570979  0.52449683  0.3973355  0.50747687  0.4493448
+## STMDE66 -0.82677829 -0.11853833 -1.2392465 -1.21510774 -0.6401781
+## STMIX74 -0.02605781  0.06766598  0.2119263  0.25039020  0.1334133
+## STMCL34  0.01010240  0.25215293  0.4147302  0.09911561  0.4718353
+##         Cold_27H_1 Cold_27H_2 Cold_27H_3  Heat_3H_1   Heat_3H_2  Heat_3H_3
+## STMDF90  0.9498117  0.7211795  0.6432118  0.1977278  0.08401729 -0.1252850
+## STMCJ24         NA         NA         NA         NA          NA         NA
+## STMJH42  0.3443153  0.3070779  0.4135795 -0.2711010 -0.20463274 -0.1379240
+## STMDE66 -0.7247027 -0.3462550 -0.2085104  0.5952455  0.38223087  0.7953431
+## STMIX74 -0.2131014  0.1339358  0.4093102 -0.3101802 -0.27240419 -0.3281268
+## STMCL34  0.6437382  0.1610692  0.3944592  0.1153996 -0.02287672  0.2846008
+##           Heat_9H_1   Heat_9H_2   Heat_9H_3 Heat_27H_1  Heat_27H_2
+## STMDF90  0.35002794  0.05356246 -0.05703404  0.1425164  0.28248735
+## STMCJ24          NA          NA          NA         NA          NA
+## STMJH42 -0.45706797  0.19147675 -0.10420203  0.1349952 -0.27521453
+## STMDE66 -0.33340769 -0.08214904  0.51611205  0.2848271 -0.06572418
+## STMIX74 -0.09254706 -0.17550761 -0.26928662 -0.1593558 -0.01864575
+## STMCL34  0.17691961 -0.11815964  0.12543910 -0.4493890  0.05459239
+##          Heat_27H_3   Salt_3H_1   Salt_3H_2   Salt_3H_3   Salt_9H_1
+## STMDF90  0.03085787  0.26817674  0.06403428  0.17578321  0.10506980
+## STMCJ24          NA          NA          NA          NA          NA
+## STMJH42  0.18979784 -0.15300676 -0.10099037  0.07796931  0.30806266
+## STMDE66  0.59378145 -0.41176745 -0.15200309 -0.06953033 -0.57056628
+## STMIX74 -0.12960857  0.09400188 -0.06613217  0.29832682 -0.05018576
+## STMCL34 -0.19968018  0.06621560 -0.03839113  0.36773178  0.69514542
+##           Salt_9H_2  Salt_9H_3 Salt_27H_1  Salt_27H_2  Salt_27H_3
+## STMDF90  0.66439222  0.5167695  0.4754657  0.33879662  0.35960214
+## STMCJ24          NA         NA         NA          NA          NA
+## STMJH42  0.66844588  0.6707336  0.3014775 -0.03611943  0.23090907
+## STMDE66 -0.97544290 -0.8345283 -0.4053873 -0.77372414 -0.40385995
+## STMIX74  0.21150410  0.1280076  0.1737449  0.29966814  0.07597295
+## STMCL34  0.09992313  0.4409757  0.0209822 -0.01242180  0.02729410</code></pre>
+<pre class="r"><code>head(normalizedData)</code></pre>
+<pre><code>##                       wt_24_1    wt_24_2    wt_48_1    wt_48_2    wt_72_1
+## ENSDARG00000104632   57.08065   56.05454   73.11288   43.15282   48.56405
+## ENSDARG00000100660   87.33339   85.68336  120.03608  116.51263   74.86957
+## ENSDARG00000098417   26.25710   19.21870   48.01443   53.22182   24.28202
+## ENSDARG00000100422 5633.28892 5251.50941 5950.51563 5057.51101 3240.63835
+## ENSDARG00000102128  494.31839  462.85033  433.22111  335.15360  367.26560
+## ENSDARG00000103095  933.83936  891.26715 1241.82776  949.36214 1541.90848
+##                       wt_72_2   mut_24_1   mut_24_2   mut_48_1   mut_48_2
+## ENSDARG00000104632   22.52972   59.92538   52.35225   50.81931   51.31421
+## ENSDARG00000100660   81.77453   85.49354   99.39340   83.15888   82.89218
+## ENSDARG00000098417   40.05283   25.56816   24.27930   72.76402   19.73623
+## ENSDARG00000100422 3709.05921 5871.08876 5879.38509 5585.50460 4748.53774
+## ENSDARG00000102128  238.64813  638.40500  533.38595  533.60280  493.40583
+## ENSDARG00000103095 1385.99490 1011.54033  974.96578 1323.61213 1225.62009
+##                      mut_72_1   mut_72_2
+## ENSDARG00000104632   49.84316   51.89721
+## ENSDARG00000100660  133.67030  160.49693
+## ENSDARG00000098417   32.85118   39.40344
+## ENSDARG00000100422 3979.52337 3769.27512
+## ENSDARG00000102128  454.25245  389.22907
+## ENSDARG00000103095 1602.91078 1686.65932</code></pre>
+<pre class="r"><code>head(edesign.abiotic)</code></pre>
+<pre><code>##              Time Replicate Control Cold Heat Salt
+## Control_3H_1    3         1       1    0    0    0
+## Control_3H_2    3         1       1    0    0    0
+## Control_3H_3    3         1       1    0    0    0
+## Control_9H_1    9         2       1    0    0    0
+## Control_9H_2    9         2       1    0    0    0
+## Control_9H_3    9         2       1    0    0    0</code></pre>
+<pre class="r"><code>exp_design &lt;- data.frame(Time = rep(c(24, 48, 72), each = 2, times = 2), Replicate = rep(c(1:6), 
+    each = 2), Control = rep(c(1, 0), each = 6), Mutant = rep(c(0, 1), each = 6), 
+    row.names = sample)
+
+head(exp_design)</code></pre>
+<pre><code>##         Time Replicate Control Mutant
+## wt_24_1   24         1       1      0
+## wt_24_2   24         1       1      0
+## wt_48_1   48         2       1      0
+## wt_48_2   48         2       1      0
+## wt_72_1   72         3       1      0
+## wt_72_2   72         3       1      0</code></pre>
+</div>
+<div id="defining-the-regression-model" class="section level2">
+<h2><span class="header-section-number">4.2</span> Defining the regression model</h2>
+<p>With the data in the correct format, we are able now to define the regression model. Since we have three time points, our model will be a polynome of a second degree to prevent overfitting. The regression model is defined with the function <code>make.design.matrix</code>, which takes the experimental design data frame and the polynomial degree as inputs. It outputs a list containing</p>
+<pre class="r"><code>design &lt;- make.design.matrix(exp_design, degree = 2)
+str(design)</code></pre>
+<pre><code>## List of 3
+##  $ dis          : num [1:12, 1:5] 0 0 0 0 0 0 1 1 1 1 ...
+##   ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. ..$ : chr [1:12] &quot;wt_24_1&quot; &quot;wt_24_2&quot; &quot;wt_48_1&quot; &quot;wt_48_2&quot; ...
+##   .. ..$ : chr [1:5] &quot;MutantvsControl&quot; &quot;Time&quot; &quot;TimexMutant&quot; &quot;Time2&quot; ...
+##  $ groups.vector: chr [1:5] &quot;MutantvsControl&quot; &quot;Control&quot; &quot;MutantvsControl&quot; &quot;Control&quot; ...
+##  $ edesign      :'data.frame':   12 obs. of  4 variables:
+##   ..$ Time     : num [1:12] 24 24 48 48 72 72 24 24 48 48 ...
+##   ..$ Replicate: int [1:12] 1 1 2 2 3 3 4 4 5 5 ...
+##   ..$ Control  : num [1:12] 1 1 1 1 1 1 0 0 0 0 ...
+##   ..$ Mutant   : num [1:12] 0 0 0 0 0 0 1 1 1 1 ...</code></pre>
+<pre class="r"><code>head(design$dis)</code></pre>
+<pre><code>##         MutantvsControl Time TimexMutant Time2 Time2xMutant
+## wt_24_1               0   24           0   576            0
+## wt_24_2               0   24           0   576            0
+## wt_48_1               0   48           0  2304            0
+## wt_48_2               0   48           0  2304            0
+## wt_72_1               0   72           0  5184            0
+## wt_72_2               0   72           0  5184            0</code></pre>
+<pre class="r"><code>head(design$groups.vector)</code></pre>
+<pre><code>## [1] &quot;MutantvsControl&quot; &quot;Control&quot;         &quot;MutantvsControl&quot; &quot;Control&quot;        
+## [5] &quot;MutantvsControl&quot;</code></pre>
+</div>
+<div id="finding-significant-genes" class="section level2">
+<h2><span class="header-section-number">4.3</span> Finding significant genes</h2>
+<p>model –&gt; F-Statistic –&gt; p-val –&gt; B-H FDR (Q), by default = 0.05</p>
+<p>p.vector args: expression values, model list, FDR control, multiple comparison correction method, min counts for gene to be included in the analysis, if the data are counts, distribution family (NB), NB parameters</p>
+<p>number of significant genes –&gt; i alpha –&gt; p-val at Q SELEC –&gt; sig genes and their expression levels</p>
+<pre><code>## [1] &quot;fitting  gene 100 out of 29644&quot;
+## [1] &quot;fitting  gene 200 out of 29644&quot;
+## [1] &quot;fitting  gene 300 out of 29644&quot;
+## [1] &quot;fitting  gene 400 out of 29644&quot;
+## [1] &quot;fitting  gene 500 out of 29644&quot;
+## [1] &quot;fitting  gene 600 out of 29644&quot;
+## [1] &quot;fitting  gene 700 out of 29644&quot;
+## [1] &quot;fitting  gene 800 out of 29644&quot;
+## [1] &quot;fitting  gene 900 out of 29644&quot;
+## [1] &quot;fitting  gene 1000 out of 29644&quot;
+## [1] &quot;fitting  gene 1100 out of 29644&quot;
+## [1] &quot;fitting  gene 1200 out of 29644&quot;
+## [1] &quot;fitting  gene 1300 out of 29644&quot;
+## [1] &quot;fitting  gene 1400 out of 29644&quot;
+## [1] &quot;fitting  gene 1500 out of 29644&quot;
+## [1] &quot;fitting  gene 1600 out of 29644&quot;
+## [1] &quot;fitting  gene 1700 out of 29644&quot;
+## [1] &quot;fitting  gene 1800 out of 29644&quot;
+## [1] &quot;fitting  gene 1900 out of 29644&quot;
+## [1] &quot;fitting  gene 2000 out of 29644&quot;
+## [1] &quot;fitting  gene 2100 out of 29644&quot;
+## [1] &quot;fitting  gene 2200 out of 29644&quot;
+## [1] &quot;fitting  gene 2300 out of 29644&quot;
+## [1] &quot;fitting  gene 2400 out of 29644&quot;
+## [1] &quot;fitting  gene 2500 out of 29644&quot;
+## [1] &quot;fitting  gene 2600 out of 29644&quot;
+## [1] &quot;fitting  gene 2700 out of 29644&quot;
+## [1] &quot;fitting  gene 2800 out of 29644&quot;
+## [1] &quot;fitting  gene 2900 out of 29644&quot;
+## [1] &quot;fitting  gene 3000 out of 29644&quot;
+## [1] &quot;fitting  gene 3100 out of 29644&quot;
+## [1] &quot;fitting  gene 3200 out of 29644&quot;
+## [1] &quot;fitting  gene 3300 out of 29644&quot;
+## [1] &quot;fitting  gene 3400 out of 29644&quot;
+## [1] &quot;fitting  gene 3500 out of 29644&quot;
+## [1] &quot;fitting  gene 3600 out of 29644&quot;
+## [1] &quot;fitting  gene 3700 out of 29644&quot;
+## [1] &quot;fitting  gene 3800 out of 29644&quot;
+## [1] &quot;fitting  gene 3900 out of 29644&quot;
+## [1] &quot;fitting  gene 4000 out of 29644&quot;
+## [1] &quot;fitting  gene 4100 out of 29644&quot;
+## [1] &quot;fitting  gene 4200 out of 29644&quot;
+## [1] &quot;fitting  gene 4300 out of 29644&quot;
+## [1] &quot;fitting  gene 4400 out of 29644&quot;
+## [1] &quot;fitting  gene 4500 out of 29644&quot;
+## [1] &quot;fitting  gene 4600 out of 29644&quot;
+## [1] &quot;fitting  gene 4700 out of 29644&quot;
+## [1] &quot;fitting  gene 4800 out of 29644&quot;
+## [1] &quot;fitting  gene 4900 out of 29644&quot;
+## [1] &quot;fitting  gene 5000 out of 29644&quot;
+## [1] &quot;fitting  gene 5100 out of 29644&quot;
+## [1] &quot;fitting  gene 5200 out of 29644&quot;
+## [1] &quot;fitting  gene 5300 out of 29644&quot;
+## [1] &quot;fitting  gene 5400 out of 29644&quot;
+## [1] &quot;fitting  gene 5500 out of 29644&quot;
+## [1] &quot;fitting  gene 5600 out of 29644&quot;
+## [1] &quot;fitting  gene 5700 out of 29644&quot;
+## [1] &quot;fitting  gene 5800 out of 29644&quot;
+## [1] &quot;fitting  gene 5900 out of 29644&quot;
+## [1] &quot;fitting  gene 6000 out of 29644&quot;
+## [1] &quot;fitting  gene 6100 out of 29644&quot;
+## [1] &quot;fitting  gene 6200 out of 29644&quot;
+## [1] &quot;fitting  gene 6300 out of 29644&quot;
+## [1] &quot;fitting  gene 6400 out of 29644&quot;
+## [1] &quot;fitting  gene 6500 out of 29644&quot;
+## [1] &quot;fitting  gene 6600 out of 29644&quot;
+## [1] &quot;fitting  gene 6700 out of 29644&quot;
+## [1] &quot;fitting  gene 6800 out of 29644&quot;
+## [1] &quot;fitting  gene 6900 out of 29644&quot;
+## [1] &quot;fitting  gene 7000 out of 29644&quot;
+## [1] &quot;fitting  gene 7100 out of 29644&quot;
+## [1] &quot;fitting  gene 7200 out of 29644&quot;
+## [1] &quot;fitting  gene 7300 out of 29644&quot;
+## [1] &quot;fitting  gene 7400 out of 29644&quot;
+## [1] &quot;fitting  gene 7500 out of 29644&quot;
+## [1] &quot;fitting  gene 7600 out of 29644&quot;
+## [1] &quot;fitting  gene 7700 out of 29644&quot;
+## [1] &quot;fitting  gene 7800 out of 29644&quot;
+## [1] &quot;fitting  gene 7900 out of 29644&quot;
+## [1] &quot;fitting  gene 8000 out of 29644&quot;
+## [1] &quot;fitting  gene 8100 out of 29644&quot;
+## [1] &quot;fitting  gene 8200 out of 29644&quot;
+## [1] &quot;fitting  gene 8300 out of 29644&quot;
+## [1] &quot;fitting  gene 8400 out of 29644&quot;
+## [1] &quot;fitting  gene 8500 out of 29644&quot;
+## [1] &quot;fitting  gene 8600 out of 29644&quot;
+## [1] &quot;fitting  gene 8700 out of 29644&quot;
+## [1] &quot;fitting  gene 8800 out of 29644&quot;
+## [1] &quot;fitting  gene 8900 out of 29644&quot;
+## [1] &quot;fitting  gene 9000 out of 29644&quot;
+## [1] &quot;fitting  gene 9100 out of 29644&quot;
+## [1] &quot;fitting  gene 9200 out of 29644&quot;
+## [1] &quot;fitting  gene 9300 out of 29644&quot;
+## [1] &quot;fitting  gene 9400 out of 29644&quot;
+## [1] &quot;fitting  gene 9500 out of 29644&quot;
+## [1] &quot;fitting  gene 9600 out of 29644&quot;
+## [1] &quot;fitting  gene 9700 out of 29644&quot;
+## [1] &quot;fitting  gene 9800 out of 29644&quot;
+## [1] &quot;fitting  gene 9900 out of 29644&quot;
+## [1] &quot;fitting  gene 10000 out of 29644&quot;
+## [1] &quot;fitting  gene 10100 out of 29644&quot;
+## [1] &quot;fitting  gene 10200 out of 29644&quot;
+## [1] &quot;fitting  gene 10300 out of 29644&quot;
+## [1] &quot;fitting  gene 10400 out of 29644&quot;
+## [1] &quot;fitting  gene 10500 out of 29644&quot;
+## [1] &quot;fitting  gene 10600 out of 29644&quot;
+## [1] &quot;fitting  gene 10700 out of 29644&quot;
+## [1] &quot;fitting  gene 10800 out of 29644&quot;
+## [1] &quot;fitting  gene 10900 out of 29644&quot;
+## [1] &quot;fitting  gene 11000 out of 29644&quot;
+## [1] &quot;fitting  gene 11100 out of 29644&quot;
+## [1] &quot;fitting  gene 11200 out of 29644&quot;
+## [1] &quot;fitting  gene 11300 out of 29644&quot;
+## [1] &quot;fitting  gene 11400 out of 29644&quot;
+## [1] &quot;fitting  gene 11500 out of 29644&quot;
+## [1] &quot;fitting  gene 11600 out of 29644&quot;
+## [1] &quot;fitting  gene 11700 out of 29644&quot;
+## [1] &quot;fitting  gene 11800 out of 29644&quot;
+## [1] &quot;fitting  gene 11900 out of 29644&quot;
+## [1] &quot;fitting  gene 12000 out of 29644&quot;
+## [1] &quot;fitting  gene 12100 out of 29644&quot;
+## [1] &quot;fitting  gene 12200 out of 29644&quot;
+## [1] &quot;fitting  gene 12300 out of 29644&quot;
+## [1] &quot;fitting  gene 12400 out of 29644&quot;
+## [1] &quot;fitting  gene 12500 out of 29644&quot;
+## [1] &quot;fitting  gene 12600 out of 29644&quot;
+## [1] &quot;fitting  gene 12700 out of 29644&quot;
+## [1] &quot;fitting  gene 12800 out of 29644&quot;
+## [1] &quot;fitting  gene 12900 out of 29644&quot;
+## [1] &quot;fitting  gene 13000 out of 29644&quot;
+## [1] &quot;fitting  gene 13100 out of 29644&quot;
+## [1] &quot;fitting  gene 13200 out of 29644&quot;
+## [1] &quot;fitting  gene 13300 out of 29644&quot;
+## [1] &quot;fitting  gene 13400 out of 29644&quot;
+## [1] &quot;fitting  gene 13500 out of 29644&quot;
+## [1] &quot;fitting  gene 13600 out of 29644&quot;
+## [1] &quot;fitting  gene 13700 out of 29644&quot;
+## [1] &quot;fitting  gene 13800 out of 29644&quot;
+## [1] &quot;fitting  gene 13900 out of 29644&quot;
+## [1] &quot;fitting  gene 14000 out of 29644&quot;
+## [1] &quot;fitting  gene 14100 out of 29644&quot;
+## [1] &quot;fitting  gene 14200 out of 29644&quot;
+## [1] &quot;fitting  gene 14300 out of 29644&quot;
+## [1] &quot;fitting  gene 14400 out of 29644&quot;
+## [1] &quot;fitting  gene 14500 out of 29644&quot;
+## [1] &quot;fitting  gene 14600 out of 29644&quot;
+## [1] &quot;fitting  gene 14700 out of 29644&quot;
+## [1] &quot;fitting  gene 14800 out of 29644&quot;
+## [1] &quot;fitting  gene 14900 out of 29644&quot;
+## [1] &quot;fitting  gene 15000 out of 29644&quot;
+## [1] &quot;fitting  gene 15100 out of 29644&quot;
+## [1] &quot;fitting  gene 15200 out of 29644&quot;
+## [1] &quot;fitting  gene 15300 out of 29644&quot;
+## [1] &quot;fitting  gene 15400 out of 29644&quot;
+## [1] &quot;fitting  gene 15500 out of 29644&quot;
+## [1] &quot;fitting  gene 15600 out of 29644&quot;
+## [1] &quot;fitting  gene 15700 out of 29644&quot;
+## [1] &quot;fitting  gene 15800 out of 29644&quot;
+## [1] &quot;fitting  gene 15900 out of 29644&quot;
+## [1] &quot;fitting  gene 16000 out of 29644&quot;
+## [1] &quot;fitting  gene 16100 out of 29644&quot;
+## [1] &quot;fitting  gene 16200 out of 29644&quot;
+## [1] &quot;fitting  gene 16300 out of 29644&quot;
+## [1] &quot;fitting  gene 16400 out of 29644&quot;
+## [1] &quot;fitting  gene 16500 out of 29644&quot;
+## [1] &quot;fitting  gene 16600 out of 29644&quot;
+## [1] &quot;fitting  gene 16700 out of 29644&quot;
+## [1] &quot;fitting  gene 16800 out of 29644&quot;
+## [1] &quot;fitting  gene 16900 out of 29644&quot;
+## [1] &quot;fitting  gene 17000 out of 29644&quot;
+## [1] &quot;fitting  gene 17100 out of 29644&quot;
+## [1] &quot;fitting  gene 17200 out of 29644&quot;
+## [1] &quot;fitting  gene 17300 out of 29644&quot;
+## [1] &quot;fitting  gene 17400 out of 29644&quot;
+## [1] &quot;fitting  gene 17500 out of 29644&quot;
+## [1] &quot;fitting  gene 17600 out of 29644&quot;
+## [1] &quot;fitting  gene 17700 out of 29644&quot;
+## [1] &quot;fitting  gene 17800 out of 29644&quot;
+## [1] &quot;fitting  gene 17900 out of 29644&quot;
+## [1] &quot;fitting  gene 18000 out of 29644&quot;
+## [1] &quot;fitting  gene 18100 out of 29644&quot;
+## [1] &quot;fitting  gene 18200 out of 29644&quot;
+## [1] &quot;fitting  gene 18300 out of 29644&quot;
+## [1] &quot;fitting  gene 18400 out of 29644&quot;
+## [1] &quot;fitting  gene 18500 out of 29644&quot;
+## [1] &quot;fitting  gene 18600 out of 29644&quot;
+## [1] &quot;fitting  gene 18700 out of 29644&quot;
+## [1] &quot;fitting  gene 18800 out of 29644&quot;
+## [1] &quot;fitting  gene 18900 out of 29644&quot;
+## [1] &quot;fitting  gene 19000 out of 29644&quot;
+## [1] &quot;fitting  gene 19100 out of 29644&quot;
+## [1] &quot;fitting  gene 19200 out of 29644&quot;
+## [1] &quot;fitting  gene 19300 out of 29644&quot;
+## [1] &quot;fitting  gene 19400 out of 29644&quot;
+## [1] &quot;fitting  gene 19500 out of 29644&quot;
+## [1] &quot;fitting  gene 19600 out of 29644&quot;
+## [1] &quot;fitting  gene 19700 out of 29644&quot;
+## [1] &quot;fitting  gene 19800 out of 29644&quot;
+## [1] &quot;fitting  gene 19900 out of 29644&quot;
+## [1] &quot;fitting  gene 20000 out of 29644&quot;
+## [1] &quot;fitting  gene 20100 out of 29644&quot;
+## [1] &quot;fitting  gene 20200 out of 29644&quot;
+## [1] &quot;fitting  gene 20300 out of 29644&quot;
+## [1] &quot;fitting  gene 20400 out of 29644&quot;
+## [1] &quot;fitting  gene 20500 out of 29644&quot;
+## [1] &quot;fitting  gene 20600 out of 29644&quot;
+## [1] &quot;fitting  gene 20700 out of 29644&quot;
+## [1] &quot;fitting  gene 20800 out of 29644&quot;
+## [1] &quot;fitting  gene 20900 out of 29644&quot;
+## [1] &quot;fitting  gene 21000 out of 29644&quot;
+## [1] &quot;fitting  gene 21100 out of 29644&quot;
+## [1] &quot;fitting  gene 21200 out of 29644&quot;
+## [1] &quot;fitting  gene 21300 out of 29644&quot;
+## [1] &quot;fitting  gene 21400 out of 29644&quot;
+## [1] &quot;fitting  gene 21500 out of 29644&quot;
+## [1] &quot;fitting  gene 21600 out of 29644&quot;
+## [1] &quot;fitting  gene 21700 out of 29644&quot;
+## [1] &quot;fitting  gene 21800 out of 29644&quot;
+## [1] &quot;fitting  gene 21900 out of 29644&quot;
+## [1] &quot;fitting  gene 22000 out of 29644&quot;
+## [1] &quot;fitting  gene 22100 out of 29644&quot;
+## [1] &quot;fitting  gene 22200 out of 29644&quot;
+## [1] &quot;fitting  gene 22300 out of 29644&quot;
+## [1] &quot;fitting  gene 22400 out of 29644&quot;
+## [1] &quot;fitting  gene 22500 out of 29644&quot;
+## [1] &quot;fitting  gene 22600 out of 29644&quot;
+## [1] &quot;fitting  gene 22700 out of 29644&quot;
+## [1] &quot;fitting  gene 22800 out of 29644&quot;
+## [1] &quot;fitting  gene 22900 out of 29644&quot;
+## [1] &quot;fitting  gene 23000 out of 29644&quot;
+## [1] &quot;fitting  gene 23100 out of 29644&quot;
+## [1] &quot;fitting  gene 23200 out of 29644&quot;
+## [1] &quot;fitting  gene 23300 out of 29644&quot;
+## [1] &quot;fitting  gene 23400 out of 29644&quot;
+## [1] &quot;fitting  gene 23500 out of 29644&quot;
+## [1] &quot;fitting  gene 23600 out of 29644&quot;
+## [1] &quot;fitting  gene 23700 out of 29644&quot;
+## [1] &quot;fitting  gene 23800 out of 29644&quot;
+## [1] &quot;fitting  gene 23900 out of 29644&quot;
+## [1] &quot;fitting  gene 24000 out of 29644&quot;
+## [1] &quot;fitting  gene 24100 out of 29644&quot;
+## [1] &quot;fitting  gene 24200 out of 29644&quot;
+## [1] &quot;fitting  gene 24300 out of 29644&quot;
+## [1] &quot;fitting  gene 24400 out of 29644&quot;
+## [1] &quot;fitting  gene 24500 out of 29644&quot;
+## [1] &quot;fitting  gene 24600 out of 29644&quot;
+## [1] &quot;fitting  gene 24700 out of 29644&quot;
+## [1] &quot;fitting  gene 24800 out of 29644&quot;
+## [1] &quot;fitting  gene 24900 out of 29644&quot;
+## [1] &quot;fitting  gene 25000 out of 29644&quot;
+## [1] &quot;fitting  gene 25100 out of 29644&quot;
+## [1] &quot;fitting  gene 25200 out of 29644&quot;
+## [1] &quot;fitting  gene 25300 out of 29644&quot;
+## [1] &quot;fitting  gene 25400 out of 29644&quot;
+## [1] &quot;fitting  gene 25500 out of 29644&quot;
+## [1] &quot;fitting  gene 25600 out of 29644&quot;
+## [1] &quot;fitting  gene 25700 out of 29644&quot;
+## [1] &quot;fitting  gene 25800 out of 29644&quot;
+## [1] &quot;fitting  gene 25900 out of 29644&quot;
+## [1] &quot;fitting  gene 26000 out of 29644&quot;
+## [1] &quot;fitting  gene 26100 out of 29644&quot;
+## [1] &quot;fitting  gene 26200 out of 29644&quot;
+## [1] &quot;fitting  gene 26300 out of 29644&quot;
+## [1] &quot;fitting  gene 26400 out of 29644&quot;
+## [1] &quot;fitting  gene 26500 out of 29644&quot;
+## [1] &quot;fitting  gene 26600 out of 29644&quot;
+## [1] &quot;fitting  gene 26700 out of 29644&quot;
+## [1] &quot;fitting  gene 26800 out of 29644&quot;
+## [1] &quot;fitting  gene 26900 out of 29644&quot;
+## [1] &quot;fitting  gene 27000 out of 29644&quot;
+## [1] &quot;fitting  gene 27100 out of 29644&quot;
+## [1] &quot;fitting  gene 27200 out of 29644&quot;
+## [1] &quot;fitting  gene 27300 out of 29644&quot;
+## [1] &quot;fitting  gene 27400 out of 29644&quot;
+## [1] &quot;fitting  gene 27500 out of 29644&quot;
+## [1] &quot;fitting  gene 27600 out of 29644&quot;
+## [1] &quot;fitting  gene 27700 out of 29644&quot;
+## [1] &quot;fitting  gene 27800 out of 29644&quot;
+## [1] &quot;fitting  gene 27900 out of 29644&quot;
+## [1] &quot;fitting  gene 28000 out of 29644&quot;
+## [1] &quot;fitting  gene 28100 out of 29644&quot;
+## [1] &quot;fitting  gene 28200 out of 29644&quot;
+## [1] &quot;fitting  gene 28300 out of 29644&quot;
+## [1] &quot;fitting  gene 28400 out of 29644&quot;
+## [1] &quot;fitting  gene 28500 out of 29644&quot;
+## [1] &quot;fitting  gene 28600 out of 29644&quot;
+## [1] &quot;fitting  gene 28700 out of 29644&quot;
+## [1] &quot;fitting  gene 28800 out of 29644&quot;
+## [1] &quot;fitting  gene 28900 out of 29644&quot;
+## [1] &quot;fitting  gene 29000 out of 29644&quot;
+## [1] &quot;fitting  gene 29100 out of 29644&quot;
+## [1] &quot;fitting  gene 29200 out of 29644&quot;
+## [1] &quot;fitting  gene 29300 out of 29644&quot;
+## [1] &quot;fitting  gene 29400 out of 29644&quot;
+## [1] &quot;fitting  gene 29500 out of 29644&quot;
+## [1] &quot;fitting  gene 29600 out of 29644&quot;</code></pre>
+<pre><code>## List of 14
+##  $ SELEC        : num [1:10890, 1:12] 87.3 5633.3 933.8 1110.2 4 ...
+##   ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. ..$ : chr [1:10890] &quot;ENSDARG00000100660&quot; &quot;ENSDARG00000100422&quot; &quot;ENSDARG00000103095&quot; &quot;ENSDARG00000102474&quot; ...
+##   .. ..$ : chr [1:12] &quot;wt_24_1&quot; &quot;wt_24_2&quot; &quot;wt_48_1&quot; &quot;wt_48_2&quot; ...
+##  $ p.vector     : num [1:29644, 1] 0.48309 0.00163 0.51183 0.00445 0.03094 ...
+##   ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. ..$ : chr [1:29644] &quot;ENSDARG00000104632&quot; &quot;ENSDARG00000100660&quot; &quot;ENSDARG00000098417&quot; &quot;ENSDARG00000100422&quot; ...
+##   .. ..$ : chr &quot;p.value&quot;
+##  $ p.adjusted   : num [1:29644] 0.60234 0.00937 0.62362 0.0181 0.07373 ...
+##  $ G            : int 32266
+##  $ g            : int 29644
+##  $ FDR          : num 0.0184
+##  $ i            : int 10890
+##  $ dis          :'data.frame':   12 obs. of  5 variables:
+##   ..$ MutantvsControl: num [1:12] 0 0 0 0 0 0 1 1 1 1 ...
+##   ..$ Time           : num [1:12] 24 24 48 48 72 72 24 24 48 48 ...
+##   ..$ TimexMutant    : num [1:12] 0 0 0 0 0 0 24 24 48 48 ...
+##   ..$ Time2          : num [1:12] 576 576 2304 2304 5184 ...
+##   ..$ Time2xMutant   : num [1:12] 0 0 0 0 0 ...
+##  $ dat          : num [1:29644, 1:12] 57.1 87.3 26.3 5633.3 494.3 ...
+##   ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. ..$ : chr [1:29644] &quot;ENSDARG00000104632&quot; &quot;ENSDARG00000100660&quot; &quot;ENSDARG00000098417&quot; &quot;ENSDARG00000100422&quot; ...
+##   .. ..$ : chr [1:12] &quot;wt_24_1&quot; &quot;wt_24_2&quot; &quot;wt_48_1&quot; &quot;wt_48_2&quot; ...
+##  $ min.obs      : num 10
+##  $ Q            : num 0.05
+##  $ groups.vector: chr [1:5] &quot;MutantvsControl&quot; &quot;Control&quot; &quot;MutantvsControl&quot; &quot;Control&quot; ...
+##  $ edesign      :'data.frame':   12 obs. of  4 variables:
+##   ..$ Time     : num [1:12] 24 24 48 48 72 72 24 24 48 48 ...
+##   ..$ Replicate: int [1:12] 1 1 2 2 3 3 4 4 5 5 ...
+##   ..$ Control  : num [1:12] 1 1 1 1 1 1 0 0 0 0 ...
+##   ..$ Mutant   : num [1:12] 0 0 0 0 0 0 1 1 1 1 ...
+##  $ family       :List of 11
+##   ..$ family    : chr &quot;gaussian&quot;
+##   ..$ link      : chr &quot;identity&quot;
+##   ..$ linkfun   :function (mu)  
+##   ..$ linkinv   :function (eta)  
+##   ..$ variance  :function (mu)  
+##   ..$ dev.resids:function (y, mu, wt)  
+##   ..$ aic       :function (y, n, mu, wt, dev)  
+##   ..$ mu.eta    :function (eta)  
+##   ..$ initialize:  expression({  n &lt;- rep.int(1, nobs)  if (is.null(etastart) &amp;&amp; is.null(start) &amp;&amp; is.null(mustart) &amp;&amp;  ((family$lin| __truncated__
+##   ..$ validmu   :function (mu)  
+##   ..$ valideta  :function (eta)  
+##   ..- attr(*, &quot;class&quot;)= chr &quot;family&quot;</code></pre>
+</div>
+<div id="finding-significant-differences" class="section level2">
+<h2><span class="header-section-number">4.4</span> Finding significant differences</h2>
+<p>…</p>
+<pre class="r"><code>tstep &lt;- T.fit(fit, step.method = &quot;backward&quot;, alfa = 0.05)</code></pre>
+<pre><code>## [1] &quot;fitting  gene 100 out of 10890&quot;
+## [1] &quot;fitting  gene 200 out of 10890&quot;
+## [1] &quot;fitting  gene 300 out of 10890&quot;
+## [1] &quot;fitting  gene 400 out of 10890&quot;
+## [1] &quot;fitting  gene 500 out of 10890&quot;
+## [1] &quot;fitting  gene 600 out of 10890&quot;
+## [1] &quot;fitting  gene 700 out of 10890&quot;
+## [1] &quot;fitting  gene 800 out of 10890&quot;
+## [1] &quot;fitting  gene 900 out of 10890&quot;
+## [1] &quot;fitting  gene 1000 out of 10890&quot;
+## [1] &quot;fitting  gene 1100 out of 10890&quot;
+## [1] &quot;fitting  gene 1200 out of 10890&quot;
+## [1] &quot;fitting  gene 1300 out of 10890&quot;
+## [1] &quot;fitting  gene 1400 out of 10890&quot;
+## [1] &quot;fitting  gene 1500 out of 10890&quot;
+## [1] &quot;fitting  gene 1600 out of 10890&quot;
+## [1] &quot;fitting  gene 1700 out of 10890&quot;
+## [1] &quot;fitting  gene 1800 out of 10890&quot;
+## [1] &quot;fitting  gene 1900 out of 10890&quot;
+## [1] &quot;fitting  gene 2000 out of 10890&quot;
+## [1] &quot;fitting  gene 2100 out of 10890&quot;
+## [1] &quot;fitting  gene 2200 out of 10890&quot;
+## [1] &quot;fitting  gene 2300 out of 10890&quot;
+## [1] &quot;fitting  gene 2400 out of 10890&quot;
+## [1] &quot;fitting  gene 2500 out of 10890&quot;
+## [1] &quot;fitting  gene 2600 out of 10890&quot;
+## [1] &quot;fitting  gene 2700 out of 10890&quot;
+## [1] &quot;fitting  gene 2800 out of 10890&quot;
+## [1] &quot;fitting  gene 2900 out of 10890&quot;
+## [1] &quot;fitting  gene 3000 out of 10890&quot;
+## [1] &quot;fitting  gene 3100 out of 10890&quot;
+## [1] &quot;fitting  gene 3200 out of 10890&quot;
+## [1] &quot;fitting  gene 3300 out of 10890&quot;
+## [1] &quot;fitting  gene 3400 out of 10890&quot;
+## [1] &quot;fitting  gene 3500 out of 10890&quot;
+## [1] &quot;fitting  gene 3600 out of 10890&quot;
+## [1] &quot;fitting  gene 3700 out of 10890&quot;
+## [1] &quot;fitting  gene 3800 out of 10890&quot;
+## [1] &quot;fitting  gene 3900 out of 10890&quot;
+## [1] &quot;fitting  gene 4000 out of 10890&quot;
+## [1] &quot;fitting  gene 4100 out of 10890&quot;
+## [1] &quot;fitting  gene 4200 out of 10890&quot;
+## [1] &quot;fitting  gene 4300 out of 10890&quot;
+## [1] &quot;fitting  gene 4400 out of 10890&quot;
+## [1] &quot;fitting  gene 4500 out of 10890&quot;
+## [1] &quot;fitting  gene 4600 out of 10890&quot;
+## [1] &quot;fitting  gene 4700 out of 10890&quot;
+## [1] &quot;fitting  gene 4800 out of 10890&quot;
+## [1] &quot;fitting  gene 4900 out of 10890&quot;
+## [1] &quot;fitting  gene 5000 out of 10890&quot;
+## [1] &quot;fitting  gene 5100 out of 10890&quot;
+## [1] &quot;fitting  gene 5200 out of 10890&quot;
+## [1] &quot;fitting  gene 5300 out of 10890&quot;
+## [1] &quot;fitting  gene 5400 out of 10890&quot;
+## [1] &quot;fitting  gene 5500 out of 10890&quot;
+## [1] &quot;fitting  gene 5600 out of 10890&quot;
+## [1] &quot;fitting  gene 5700 out of 10890&quot;
+## [1] &quot;fitting  gene 5800 out of 10890&quot;
+## [1] &quot;fitting  gene 5900 out of 10890&quot;
+## [1] &quot;fitting  gene 6000 out of 10890&quot;
+## [1] &quot;fitting  gene 6100 out of 10890&quot;
+## [1] &quot;fitting  gene 6200 out of 10890&quot;
+## [1] &quot;fitting  gene 6300 out of 10890&quot;
+## [1] &quot;fitting  gene 6400 out of 10890&quot;
+## [1] &quot;fitting  gene 6500 out of 10890&quot;
+## [1] &quot;fitting  gene 6600 out of 10890&quot;
+## [1] &quot;fitting  gene 6700 out of 10890&quot;
+## [1] &quot;fitting  gene 6800 out of 10890&quot;
+## [1] &quot;fitting  gene 6900 out of 10890&quot;
+## [1] &quot;fitting  gene 7000 out of 10890&quot;
+## [1] &quot;fitting  gene 7100 out of 10890&quot;
+## [1] &quot;fitting  gene 7200 out of 10890&quot;
+## [1] &quot;fitting  gene 7300 out of 10890&quot;
+## [1] &quot;fitting  gene 7400 out of 10890&quot;
+## [1] &quot;fitting  gene 7500 out of 10890&quot;
+## [1] &quot;fitting  gene 7600 out of 10890&quot;
+## [1] &quot;fitting  gene 7700 out of 10890&quot;
+## [1] &quot;fitting  gene 7800 out of 10890&quot;
+## [1] &quot;fitting  gene 7900 out of 10890&quot;
+## [1] &quot;fitting  gene 8000 out of 10890&quot;
+## [1] &quot;fitting  gene 8100 out of 10890&quot;
+## [1] &quot;fitting  gene 8200 out of 10890&quot;
+## [1] &quot;fitting  gene 8300 out of 10890&quot;
+## [1] &quot;fitting  gene 8400 out of 10890&quot;
+## [1] &quot;fitting  gene 8500 out of 10890&quot;
+## [1] &quot;fitting  gene 8600 out of 10890&quot;
+## [1] &quot;fitting  gene 8700 out of 10890&quot;
+## [1] &quot;fitting  gene 8800 out of 10890&quot;
+## [1] &quot;fitting  gene 8900 out of 10890&quot;
+## [1] &quot;fitting  gene 9000 out of 10890&quot;
+## [1] &quot;fitting  gene 9100 out of 10890&quot;
+## [1] &quot;fitting  gene 9200 out of 10890&quot;
+## [1] &quot;fitting  gene 9300 out of 10890&quot;
+## [1] &quot;fitting  gene 9400 out of 10890&quot;
+## [1] &quot;fitting  gene 9500 out of 10890&quot;
+## [1] &quot;fitting  gene 9600 out of 10890&quot;
+## [1] &quot;fitting  gene 9700 out of 10890&quot;
+## [1] &quot;fitting  gene 9800 out of 10890&quot;
+## [1] &quot;fitting  gene 9900 out of 10890&quot;
+## [1] &quot;fitting  gene 10000 out of 10890&quot;
+## [1] &quot;fitting  gene 10100 out of 10890&quot;
+## [1] &quot;fitting  gene 10200 out of 10890&quot;
+## [1] &quot;fitting  gene 10300 out of 10890&quot;
+## [1] &quot;fitting  gene 10400 out of 10890&quot;
+## [1] &quot;fitting  gene 10500 out of 10890&quot;
+## [1] &quot;fitting  gene 10600 out of 10890&quot;
+## [1] &quot;fitting  gene 10700 out of 10890&quot;
+## [1] &quot;fitting  gene 10800 out of 10890&quot;
+## [1] &quot;Influence: 1601 genes with influential data at slot influ.info. Model validation for these genes is recommended&quot;</code></pre>
 </div>
 </div>
 
