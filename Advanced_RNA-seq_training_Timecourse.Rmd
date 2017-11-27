@@ -1,0 +1,75 @@
+---
+title: "Time course RNA-seq with maSigPro"
+subtitle: "Tutorial"
+author: Damir Baranasic
+date: "01/12/2017"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+---
+
+# Data preparation
+
+First we need to prepare the data for the analysis. This includes reading the counts for each sample and making the matrix with sample description.
+
+## Make a list of files
+
+All the files are in the `data/` subfolder of the project. As mentioned previously all the namings follow a convention. First of all we have to make the list of all files used. We will read them in a specific order so that we know for each file to which sample belongs to.
+
+```{r tidy=TRUE}
+
+seq_ids = c("DCD001548SQ", "DCD001559SQ", "DCD001546SQ", "DCD001558SQ", "DCD001547SQ", "DCD001545SQ",
+            "DCD001560SQ", "DCD001554SQ", "DCD001564SQ", "DCD001555SQ", "DCD001565SQ", "DCD001551SQ")
+files = sapply(seq_ids, function(x) paste("data/RNA-seq_Strahle_Lab_0005AS.", x, ".USERvgourain.R.ReadsPerGene.out.tab", sep = ""), USE.NAMES = FALSE)
+head(files)
+
+```
+
+Now, when we have created a list of file names, we can make add the sample descrition to them.
+
+```{r tidy=TRUE}
+
+type <- rep(c("wt", "mut"), each = 6)
+type
+repl <- rep(c("1", "2"), times = 6)
+repl
+time = rep(c("24", "48", "72"), each = 2, times = 2)
+time
+sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
+files <- setNames(files, sample)
+head(files)
+
+```
+
+## Read the reads per gene counts
+
+When we have a list of files with the sample description, we will can read the counts from the file.
+
+The files with read counts are formated in the following manner:
+
+```{r tidy=TRUE}
+system("head data/RNA-seq_Strahle_Lab_0005AS.DCD001545SQ.USERvgourain.R.ReadsPerGene.out.tab")
+```
+
+The first four lines contain the global mapping statistics. For our purpose, we can just skip them. The counts start on the fifth line. The first column are the gene identifiers, the second represents the total counts per gene, while the third and the fourth column represent the strand specific counts. To facilitate parcing of all twelve files in our case study, we can make a simple helper function, which will read the counts in an R data frame. The function is just a wrap around the `read.csv` function from the `utils` package. It has a argument for naming the columns.
+
+```{r tidy = TRUE}
+
+readTagsPerGene <- function(x){
+  out <- read.csv(x, skip = 4, header = FALSE, sep = "\t", row.names = 1,
+                  col.names = c("","totalCount", "forwardCount", "reverseCount"))
+  out
+}
+
+```
+
+Now we can iterate through all the files and extract the counts with `lapply` using the function we just defined.
+
+```{r tidy=TRUE}
+
+allReadsCounts <- lapply(files, readTagsPerGene)
+head(allReadsCounts)
+
+```

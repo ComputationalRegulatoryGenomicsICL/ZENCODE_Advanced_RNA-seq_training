@@ -152,10 +152,21 @@ repl
 time = rep(c("24", "48", "72"), each = 2, times = 2)
 time
 sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
-head(sample)
-#files <- setNames(files, sample)
+totalReadsCount <- setNames(totalReadsCount, sample)
 coldata <- data.frame(condition = type, time = time)
 row.names(coldata) <- sample
-head(coldata)
+head(coldata, n = 4)
+
+```
+
+Data normalization
+
+```{r tidy = TRUE}
+
+library(DESeq2)
+dds <- DESeqDataSetFromMatrix(countData = totalReadsCount, colData = coldata, design = ~ time + condition
+dds <- DESeq(dds)
+normalizedData <- counts(dds, normalized = TRUE)
+
 
 ```

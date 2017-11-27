@@ -161,8 +161,8 @@ head(totalReadsCount, n = 2)
 
 ```
                    [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
-ENSDARG00000104632  100  100   67   30   48   27   75   69   44    26
-ENSDARG00000100660  153  153  110   81   74   98  107  131   72    42
+ENSDARG00000104632  100   70   67   30   48   27   75   69   44    26
+ENSDARG00000100660  153  107  110   81   74   98  107  131   72    42
                    [,11] [,12]
 ENSDARG00000104632    44    54
 ENSDARG00000100660   118   167
@@ -202,34 +202,10 @@ time
 
 ```r
 sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
-head(sample)
-```
-
-```
-$wt
-[1] "wt_24_1"
-
-$wt
-[1] "wt_24_2"
-
-$wt
-[1] "wt_48_1"
-
-$wt
-[1] "wt_48_2"
-
-$wt
-[1] "wt_72_1"
-
-$wt
-[1] "wt_72_2"
-```
-
-```r
-#files <- setNames(files, sample)
+totalReadsCount <- setNames(totalReadsCount, sample)
 coldata <- data.frame(condition = type, time = time)
 row.names(coldata) <- sample
-head(coldata)
+head(coldata, n = 4)
 ```
 
 ```
@@ -238,6 +214,15 @@ wt_24_1        wt   24
 wt_24_2        wt   24
 wt_48_1        wt   48
 wt_48_2        wt   48
-wt_72_1        wt   72
-wt_72_2        wt   72
+```
+
+Data normalization
+
+
+
+```
+Error in parse(text = x, srcfile = src) : <text>:4:1: unexpected symbol
+3: dds <- DESeqDataSetFromMatrix(countData = totalReadsCount, colData = coldata, design = ~ time + condition
+4: dds
+   ^
 ```
