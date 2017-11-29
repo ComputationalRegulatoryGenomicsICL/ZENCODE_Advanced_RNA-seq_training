@@ -1,0 +1,263 @@
+---
+title: "Alternative Splicing with DEXseq"
+subtitle: "Short tutorial"
+author: "Leonie Roos & Nejc Haberman"
+date: "24/11/2017"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+bibliography: allRefs.bib
+---
+
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set(fig.width = 10,
+  fig.height = 7,
+  fig.align = 'center',
+  dpi = 300,
+  warning = FALSE,
+  message = FALSE,
+  tidy = TRUE)
+```
+
+We will analyse alternative splicing in the same dataset with the [DEXSeq](http://bioconductor.org/packages/release/bioc/html/DEXSeq.html) R package (see @Love2014). 
+
+
+# Overview
+
+The flow is very similar to the DESeq2 tutorial - however all analyses are done on exon level.
+
+
+# Data used in this case study
+
+**Loss of function of myosin chaperones triggers Hsf1-mediated transcriptional response in skeletal muscle cells** <br />
+*Christelle Etard, Olivier Armant, Urmas Roostalu, Victor Gourain, Marco Ferg and Uwe Strähle*<br />
+Genome Biology 2015 16:267 <https://doi.org/10.1186/s13059-015-0825-8>
+
+```
+RNA-seq_Strahle_Lab_0005AS.<SequencingID>.USERvgourain.R.ReadsPerGene.out.tab
+```
+
+|Hpf |      wt     |    unc45b   |
+|:--:|:-----------:|:-----------:|
+| 24 | DCD001548SQ | DCD001560SQ |
+|    | DCD001559SQ | DCD001554SQ |
+| <strong>48</strong> | <strong>DCD001546SQ</strong> | <strong>DCD001564SQ</strong>|
+|    | <strong>DCD001558SQ</strong>| <strong>DCD001555SQ</strong>| 
+| 72 | DCD001547SQ | DCD001565SQ |
+|    | DCD001545SQ | DCD001551SQ |
+
+All the libraries were unstranded paired-ended sequenced on Illumina HiSeq 2000 producing 50bp long reads.
+
+# Data preparation
+
+* Order paired-end reads by name and convert the data from BAM to SAM format by using [samtools](http://samtools.sourceforge.net/).
+```{r, eval=F, echo=T}
+$ samtools sort -n RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.genome.bam | samtools view -h - > RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.genome.sorted.sam
+$ samtools sort -n RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.genome.bam | samtools view -h - > RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.genome.sorted.sam
+$ samtools sort -n RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.genome.bam | samtools view -h - > RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.genome.sorted.sam
+$ samtools sort -n RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.genome.bam | samtools view -h - > RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.genome.sorted.sam
+```
+
+* Annotation conversion into counting exons from GTF to GFF format.
+
+```{r, eval=F, echo=T}
+$ python dexseq_prepare_annotation.py Danio_rerio.GRCz10.87.gtf Danio_rerio.GRCz10.87.gff
+```
+
+* Counting reads within exons.
+```{r, eval=F, echo=T}
+$ python dexseq_count.py -p yes -s no <ANNOTATION.GFF> <INPUT.BAM> <OUTPUT.tab>
+  Options:
+    -s, whether the data is from a strand-specific assay 
+    -p, whether the data is paired-end
+    <ANNOTATION.GFF>, pre-processed annotation file using dexseq_prepare_annotation.py python script
+    <INPUT.BAM>, mapped reads
+
+$ python dexseq_count.py -p yes -s no Danio_rerio.GRCz10.87.gff RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.genome.sorted.sam RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.genome.sorted-DEXseq.tab
+$ python dexseq_count.py -p yes -s no Danio_rerio.GRCz10.87.gff RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.genome.sorted.sam RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.genome.sorted-DEXseq.tab
+$ python dexseq_count.py -p yes -s no Danio_rerio.GRCz10.87.gff RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.genome.sorted.sam RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.genome.sorted-DEXseq.tab
+$ python dexseq_count.py -p yes -s no Danio_rerio.GRCz10.87.gff RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.genome.sorted.sam RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.genome.sorted-DEXseq.tab
+```
+
+Download scripts from the DEXseq source package [DEXSeq_1.24.1.tar.gz](http://bioconductor.org/packages/release/bioc/src/contrib/DEXSeq_1.24.1.tar.gz). 
+
+# Import data into DEXSeq 
+
+The remainder of the analysis is now done in R. We will use the output of the python scripts from above. 
+
+```{r}
+# import the data
+directory <-"../data/provided_files/data_DEXseq/"
+# the path of the count files
+sampleFiles <- grep("*.tab",list.files(directory),value=TRUE)
+countFiles=paste(directory, sampleFiles, sep = "")
+# Flattened GFF file
+flattenedFile = paste(directory, "Danio_rerio.GRCz10.87.gff", sep = "")
+```
+
+First, we need to prepare a sample table like in DESeq2. This table should contain one row for each library,
+and columns for all relevant information such as name of the file with the read counts,
+experimental conditions, technical information and further covariates. Here, we simply put in the file paths and conditions.
+
+```{r}
+sampleTable = data.frame(
+  row.names = c("wt.1","unc45b.1","wt.2","unc45b.2"),
+  condition =  c("wt","unc45b","wt","unc45b"))
+# show the sampleTable
+sampleTable
+```
+
+Then we built a DEXSeqDataSet object using the data:
+```{r}
+suppressPackageStartupMessages( library( "DEXSeq" ) )
+
+dxd = DEXSeqDataSetFromHTSeq(countFiles, sampleData = sampleTable, design= ~ sample + exon + condition:exon, flattenedfile=flattenedFile)
+```
+
+The function takes four arguments: 
+
+* A vector with names of count files (files that have been generated with the dexseq_count.py script):
+  
+* The sample table, with one row for each of the files listed in the first argument.
+  
+* A formula of the form “ sample + exon + condition:exon” that specifies the contrast with of a variable from the sample table columns and the ‘exon’ variable. 
+
+    + Using this formula, we are interested in differences in exon usage due to the ‘condition’ variable changes. 
+  
+* A file name of the flattened GFF file (generated with dexseq_prepare_annotation.py) 
+
+## See the imported data
+
+The DEXSeqDataSet class is derived from the DESeqDataSet. As such, it contains the usual accessor functions for the column data, row data, and some specific ones. The core data in an DEXSeqDataSet object are the counts per exon. Each row of the
+DEXSeqDataSet contains in each column the count data from a given exon (’this’) as well as the count data from the sum of the other exons belonging to the same gene (’others’). This annotation, as well as all the information regarding each column of the DEXSeqDataSet, is specified in the `colData`.
+```{r}
+colData(dxd)
+```
+
+We can access the first 5 rows from the count data by doing:
+
+```{r}
+head(counts(dxd),5)
+```
+
+Notice that the number of columns is 8, the first four (we have four samples) corresponding to the number of reads mapping to out exonic regions and the last four correspond to
+the sum of the counts mapping to the rest of the exons from the same gene on each sample.
+
+<br>
+
+We can also access only the first five rows from the count belonging to the exonic regions (’this’) (without showing the sum of counts from the rest of the exons from the same gene) by doing:
+
+```{r}
+head( featureCounts(dxd), 5 )
+```
+
+
+# Normalisation and dispersion estimation
+
+Different samples might be sequenced with different depths. In order to adjust for such coverage biases, we estimate size factors, which measure relative sequencing depth. DEXSeq uses the same method as DESeq and DESeq2, which is provided in the function `estimateSizeFactors`.
+
+```{r eval = FALSE}
+# estimate size factors 
+dxd <- estimateSizeFactors( dxd )
+sizeFactors(dxd)
+# export normalised data
+normCountTable <- data.frame(featureCounts(dxd, normalized=TRUE))
+write.table(normCountTable, file= "../data/results/results_DEXseq/DEXSeq-wt_vs_unc45b-normalised-counts.tab", quote=FALSE, sep="\t")
+```
+
+
+# dispersion estimation
+
+To estimate the dispersion estimates, DEXSeq uses the approach of the package DESeq2. Internally, the functions from DESeq2 are called, adapting the parameters of the functions for the specific case of the DEXSeq model. Briefly, per-exon dispersions are calculated using a Cox-Reid adjusted profile likelihood estimation, then a dispersion-mean relation is fitted to this individual dispersion values and finally, the fitted values are taken as a prior in order
+to shrink the per-exon estimates towards the fitted values.
+
+We have run this code for you - DO NOT RUN AT THIS TUTORIAL
+```{r eval = FALSE}
+dxd <- estimateDispersions( dxd )
+```
+
+Instead we'll upload the DEXSeqDataSet with this already performed and plot the dispersion estimates:
+```{r}
+load("DEXSeq.Rdata")
+plotDispEsts( dxd ) #plot per-exon dispersion estimates versus the mean normalised count, the resulting fitted values and the a posteriori (shrinked) dispersion estimates
+```
+
+# Testing for differential exon usage
+
+Having the dispersion estimates and the size factors, we can now test for differential exon usage. For each gene,
+DEXSeq fits a generalized linear model with the formula:
+<br>
+`∼ sample + exon + condition:exon`
+<br>
+and compare it to the smaller model (the null model)
+<br>
+`∼ sample + exon`
+
+The functions - we have run this code for you - DO NOT RUN AT THIS TUTORIAL
+```{r eval = FALSE}
+dxd <- testForDEU( dxd )
+```
+
+The resulting DEXSeqDataSet object contains slots with information regarding the test.
+For some uses, we may also want to estimate relative exon usage fold changes. To this end, we call `estimateExonFoldChanges`
+.
+```{r eval = FALSE}
+dxd = estimateExonFoldChanges( dxd, fitExpToVar="condition")
+```
+
+# Exploring results
+
+So far in the pipeline, the intermediate and final results have been stored in the meta data of a DEXSeqDataSet object, they can be accessed using the function `mcol`. In order to summarize the results without showing the values from intermediate steps, we call the function `DEXSeqResults`.
+
+```{r eval = FALSE}
+# get results
+dxr1 <- DEXSeqResults(dxd)
+head(dxr1)
+# export result table
+write.table(dxr1, "../data/results/results_DEXseq/DEXseqHTML-wt_vs_unc45b-results.tab")
+```
+
+From this object, we can ask how many exonic regions are significant with a false discovery rate of 10%:
+```{r}
+table(dxr1$padj < 0.1 )
+```
+
+We may also ask how many genes are affected
+```{r}
+table ( tapply( dxr1$padj < 0.1, dxr1$groupID, any ) )
+```
+
+To see how the power to detect differential exon usage depends on the number of reads that map to an exon, a so-called MA plot is useful, which plots the logarithm of fold change versus average normalised count per exon and marks by red colour the exons which are considered significant; here, the exons with an adjusted p values of less than 0.1 for example
+
+```{r}
+# MA plot witg of exons with an adjusted p values of less than 0.1
+plotMA(dxr1, cex = 0.8 )
+```
+
+## Plot regulated exons
+
+To generate an easily browsable, detailed overview over all analysis results, the package provides an HTML report generator, implemented in the function DEXSeqHTML. This function uses the package hwriter (@Pau) to create a result table with links to plots for the significant results, allowing a more detailed exploration of the results. 
+
+To consider time - look at the path described and open the html to have a look
+```{r eval = FALSE}
+DEXSeqHTML( dxr1, FDR=0.1, color=c("#FF000080", "#0000FF80"), path="./DEXseqHTML-wt_vs_unc45b" )
+```
+
+Additionally, exons can be plotted individually:
+
+```{r}
+# plot regulated exons
+plotDEXSeq( dxr1, "ENSDARG00000003081", legend=TRUE, cex.axis=1.2, cex=1.3,
+            lwd=2 )
+```
+
+# Sessioninfo
+
+```{r,include = FALSE}
+print(sessionInfo())
+```
+
+# References

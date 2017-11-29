@@ -1,0 +1,282 @@
+---
+title: "DESeq2"
+subtitle: "Short tutorial"
+author: "Leonie Roos & Nejc Haberman"
+date: "24/11/2017"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+bibliography: allRefs.bib
+---
+
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set( fig.width = 10,
+fig.height = 7,
+fig.align = 'center',
+dpi = 300,
+warning = FALSE,
+message = FALSE,
+tidy = TRUE)
+```
+
+During this short tutorial we will go through a sample workflow with the [DESeq2](http://bioconductor.org/packages/release/bioc/html/DESeq2.html) R package (see @Anders2010). 
+
+# Overview of this practical
+
+We will only go through all the standard functions and analyses of _DESeq_ in this practical. 
+
+  _DESeq2 Analysis_
+
+* Import data 
+* DESeqDataSet 
+* Normalisation (size factors)
+* Differential expression
+* Result tables
+
+# Data used in this case study
+
+**Loss of function of myosin chaperones triggers Hsf1-mediated transcriptional response in skeletal muscle cells** <br />
+*Christelle Etard, Olivier Armant, Urmas Roostalu, Victor Gourain, Marco Ferg and Uwe Strähle*<br />
+Genome Biology 2015 16:267 <https://doi.org/10.1186/s13059-015-0825-8>
+
+```
+RNA-seq_Strahle_Lab_0005AS.<SequencingID>.USERvgourain.R.ReadsPerGene.out.tab
+```
+
+|Hpf |      wt     |    unc45b   |
+|:--:|:-----------:|:-----------:|
+| 24 | DCD001548SQ | DCD001560SQ |
+|    | DCD001559SQ | DCD001554SQ |
+| <strong>48</strong> | <strong>DCD001546SQ</strong> | <strong>DCD001564SQ</strong>|
+|    | <strong>DCD001558SQ</strong>| <strong>DCD001555SQ</strong>| 
+| 72 | DCD001547SQ | DCD001565SQ |
+|    | DCD001545SQ | DCD001551SQ |
+
+All the libraries were unstranded paired-ended sequenced on Illumina HiSeq 2000 producing 50bp long reads.
+
+# Data preparation
+
+Generate count tables of reads per gene
+
+* using STAR alignment with the *'--quantMode GeneCounts'* option (https://github.com/alexdobin/STAR)
+
+example of *ReadsPerGene.out.tab* table:
+```{r, eval=F, echo=T}
+$ head RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.ReadsPerGene.out.tab
+N_unmapped	1100914	1100914	1100914
+N_multimapping	11275176	11275176	11275176
+N_noFeature	6090090	14560190	14670407
+N_ambiguous	478755	112331	109422
+ENSDARG00000104632	26	14	13
+ENSDARG00000100660	42	19	27
+ENSDARG00000098417	10	8	3
+ENSDARG00000100422	2406	1201	1219
+ENSDARG00000102128	250	133	118
+ENSDARG00000103095	621	318	307
+```
+
+select columns (gene IDs, unstranded reads) and ignore the first 4 lines
+```{r, eval=F, echo=T}
+$ tail +5 RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.ReadsPerGene.out.tab | awk '{print $1 "\t" $2}' > RNA-seq_Strahle_Lab_0005AS.DCD001555SQ.USERvgourain.R.ReadsPerGene.out.DESeq.tab
+$ tail +5 RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.ReadsPerGene.out.tab | awk '{print $1 "\t" $2}' > RNA-seq_Strahle_Lab_0005AS.DCD001564SQ.USERvgourain.R.ReadsPerGene.out.DESeq.tab
+$ tail +5 RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.ReadsPerGene.out.tab | awk '{print $1 "\t" $2}' > RNA-seq_Strahle_Lab_0005AS.DCD001546SQ.USERvgourain.R.ReadsPerGene.out.DESeq.tab
+$ tail +5 RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.ReadsPerGene.out.tab | awk '{print $1 "\t" $2}' >  RNA-seq_Strahle_Lab_0005AS.DCD001558SQ.USERvgourain.R.ReadsPerGene.out.DESeq.tab
+```
+
+* using htseq tool (http://htseq.readthedocs.io/en/master/count.html)
+```{r, eval=F, echo=T}
+$ htseq-count [options] <alignment_files> <gff_file>
+
+  Options:
+    -s, whether the data is from a strand-specific assay 
+    -r, the alignment have to be sorted either by read name or by alignment position
+    -f, input format (SAM/BAM)
+```
+
+
+# Import data into DESeq2 & create a DESeqDataSet
+
+First you will want to specify a variable which points to the directory in which the htseq-count output files are located.
+
+```{r}
+library("DESeq2")
+directory <- "../data/provided_files/data_DESeq/"
+```
+
+We specify which files to read in using list.files, and select those files contain the extension ".tab" using grep. Then we set the sample conditions for downstream analyses. Finally, we make a dataframe containing this information. 
+
+```{r}
+sampleFiles <- grep("*.tab", list.files(directory), value = TRUE)
+sampleCondition <- c("wt","unc45b", "wt", "unc45b")
+sampleTable <- data.frame(sampleName = sampleFiles, fileName=sampleFiles, condition=sampleCondition)
+# show the sampleTable
+sampleTable
+```
+
+Then we build the DESeqDataSet using the following function as we have htseq-count files:
+
+```{r}
+ddsHTSeq <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
+                                       directory = directory,
+                                       design = ~ condition)
+```
+
+
+# Differential expression analysis
+
+The standard differential expression analysis steps are wrapped into a single function, DESeq.
+
+```{r}
+dds <- DESeq(ddsHTSeq)
+```
+
+# Export normalised counts 
+```{r}
+normalised.table <- (counts(dds,normalized=T))
+write.csv(normalised.table, "../data/results/DESeq2-wt_vs_unc45b-normalised.counts.csv")
+```
+
+# Diagnostics
+
+## Size factors for normalisation
+The size factors are accessible via sizeFactors:
+```{r}
+sizeFactors(dds)
+```
+
+## Dispersion plot
+
+For every gene, a Negative Binomial (NB) distribution is fitted based on the counts to estimate the dispersion in 3 steps:
+
+* estimates dispersion parameter for each gene
+
+* plots and fits a curve
+
+* adjusts the dispersion parameter towards the curve 
+
+Legend:
+
+* black dots: estimated from normalised data
+* red line: fitted curve
+* blue dots: final assigned dispersion parameter for that gene
+
+```{r}
+plotDispEsts(dds)
+```
+
+
+# Results
+
+Results tables are generated using the function `results()`, which extracts a results table with log2 fold-changes, p-values and adjusted p-values. With no additional arguments to results, the log2 fold-change and Wald test p-value will be for the last variable in the design formula, and if this is a factor, the comparison will be the last level of this variable over the first level (unc45b over wt).
+
+Details about the comparison are printed to the console, above the results table. The text, condition treated vs untreated, tells you that the estimates are of the logarithmic fold-change log2 (wt vs unc45b).
+
+```{r}
+# get results
+res <- results(dds)
+# order for easy view:
+res.ord <- res[order(res$padj), ]
+# let's check the top differentially expressed genes!
+head(res.ord)
+
+```
+
+We can summarize some basic tallies using the summary function.
+
+```{r}
+summary(res)
+```
+## Lowering the adjusted p-value 
+
+How many adjusted p-values were less than 0.05?
+
+```{r}
+sum(res$padj < 0.05, na.rm = TRUE)
+```
+<br>
+The results function contains a number of arguments to customize the results table which is generated. You can read about these arguments by looking up `?results`. Note that the results function automatically performs independent filtering based on the mean of normalised counts for each gene, optimizing the number of genes which will have an adjusted p-value below a given FDR cutoff, alpha. Independent filtering is further discussed below. By default the argument alpha is set to 0.1. If the adjusted p-value cutoff will be a value other than 0.1, alpha should be set to that value: here that would be 0.05.
+
+```{r} 
+res05 <- results(dds, alpha = 0.05) 
+res05 <- na.omit(res05) #remove NA values
+summary(res05)
+```
+<br>
+Export results (FDR 0.05)
+
+```{r}
+write.csv(as.data.frame(res05), file="../data/results/DESeq2-wt_vs_unc45b-FDR05.csv")
+```
+
+# Exploring results
+
+In DESeq2, the function plotMA shows the log2 fold-changes attributable to a given variable over the mean of normalised counts for all the samples in the DESeqDataSet. Points will be colored red if the adjusted p value is less than 0.1. Points which fall out of the window are plotted as open triangles pointing either up or down.
+
+```{r} 
+plotMA(dds, alpha = 0.05, ylim=c(-5,5),main="DESeq2-MAplot: WT vs unc45b")
+```
+
+## Some examples
+
+You can plot single genes with the `plotCounts()` function. As long as you know the row number of the gene of interest. So when we want to look at the most significant differentially expressed gene:
+
+```{r}
+plotCounts(dds, gene=which.min(res$padj), intgroup="condition")
+```
+
+Or just your favourite gene _PARP12_:
+```{r}
+plotCounts(dds, gene=which(rownames(res) == "ENSDARG00000100660"), intgroup="condition")
+```
+
+# Extracting transformed values
+
+In order to test for differential expression, we operate on raw counts and use discrete distributions as described in the previous section on differential expression. However for other downstream analyses – e.g. for visualization or clustering – it might be useful to work with transformed versions of the count data.
+
+Maybe the most obvious choice of transformation is the logarithm.
+
+One makes use of the concept of variance stabilizing transformations (VST) (@Tibshirani1988; @Huber2003; @Anders2010), and the other is the regularized logarithm or rlog, which incorporates a prior on the sample differences (@Love2014). Both transformations produce transformed data on the log2 scale which has been normalised with respect to library size or other normalisation factors.
+
+The assay function is used to extract the matrix of normalised values. 
+```{r}
+rld <- rlogTransformation(dds, blind=TRUE)
+vsd <- varianceStabilizingTransformation(dds, blind=TRUE)
+
+head(assay(vsd), 3)
+head(assay(rld), 3)
+```
+
+## Sample to sample distances
+
+Another use of the transformed data is sample clustering. Here, we apply the dist function to the transpose of the transformed count matrix to get sample-to-sample distances and plot in a heatmap.
+
+```{r}
+library("RColorBrewer")
+library("gplots")
+
+distsRL <- dist(t(assay(rld)))
+hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
+
+mat <- as.matrix(distsRL)
+rownames(mat) <- colnames(mat) <- with(colData(dds), paste(condition, sep=" : "))
+heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13),cexRow=0.9, cexCol=0.9)
+```
+
+## PCA plot 
+
+Related to the distance matrix is the PCA plot, which shows the samples in the 2D plane spanned by their first two principal components. This type of plot is useful for visualizing the overall effect of experimental covariates and batch effects.
+
+```{r}
+print(plotPCA(rld, intgroup=c("condition")))
+```
+
+# Sessioninfo
+
+```{r,include =TRUE}
+print(sessionInfo())
+```
+
+# References
