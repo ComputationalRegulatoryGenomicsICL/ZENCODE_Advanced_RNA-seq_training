@@ -1,0 +1,241 @@
+---
+title: "Time course RNA-seq with maSigPro"
+subtitle: "Tutorial"
+author: Damir Baranasic
+date: "01/12/2017"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+---
+
+# Load required packages
+
+Before we start the analysis, we will first load all the packages needed. 
+
+```{r tidy=TRUE}
+
+library("DESeq2")
+library("maSigPro")
+library("ggplot2")
+library("dplyr")
+library("plyr")
+library("org.Dr.eg.db")
+library("clusterProfiler")
+
+```
+
+# Data preparation
+
+We need to prepare the data for the analysis. This includes reading the counts for each sample and making the matrix with sample description.
+
+## Make a list of files
+
+All the files are in the `data/` subfolder of the project. As mentioned previously all the naming follow a convention. First of all, we have to make the list of all files used. We will read them in a specific order so that we know for each file to which sample belongs to.
+
+```{r tidy=TRUE}
+
+seq_ids = c("DCD001548SQ", "DCD001559SQ", "DCD001546SQ", "DCD001558SQ", "DCD001547SQ", "DCD001545SQ",
+            "DCD001560SQ", "DCD001554SQ", "DCD001564SQ", "DCD001555SQ", "DCD001565SQ", "DCD001551SQ")
+files = sapply(seq_ids, function(x) paste("data/RNA-seq_Strahle_Lab_0005AS.", x, ".USERvgourain.R.ReadsPerGene.out.tab", sep = ""), USE.NAMES = FALSE)
+head(files)
+
+```
+
+Now, when we have created a list of file names, we can make add the sample description to them.
+
+```{r tidy=TRUE}
+
+type <- rep(c("wt", "mut"), each = 6)
+type
+repl <- rep(c("1", "2"), times = 6)
+repl
+time = rep(c("24", "48", "72"), each = 2, times = 2)
+time
+sample <- Map(function(x, y, z) paste(x, y, z, sep = "_"), type, time, repl)
+files <- setNames(files, sample)
+head(files)
+
+```
+
+## Read the reads per gene counts
+
+When we have a list of files with the sample description, we will can read the counts from the file.
+
+The files with read counts are formatted in the following manner:
+
+```
+N_unmapped	1150343	1150343	1150343
+N_multimapping	6528951	6528951	6528951
+N_noFeature	5208900	23323138	23435853
+N_ambiguous	1011496	219186	215426
+ENSDARG00000104632	27	16	14
+ENSDARG00000100660	98	51	48
+ENSDARG00000098417	48	27	22
+ENSDARG00000100422	4445	2184	2280
+ENSDARG00000102128	286	141	147
+ENSDARG00000103095	1661	802	866
+
+```
+
+The first four lines contain the global mapping statistics. For our purpose, we can just skip them. The counts start on the fifth line. The first column are the gene identifiers, the second represents the total counts per gene, while the third and the fourth column represent the strand specific counts. To facilitate parsing of all twelve files in our case study, we can make a simple helper function, which will read the counts in an R data frame. The function is just a wrap around the `read.csv` function from the `utils` package. It has an argument for naming the columns.
+
+```{r tidy = TRUE}
+
+readTagsPerGene <- function(x){
+  out <- read.csv(x, skip = 4, header = FALSE, sep = "\t", row.names = 1,
+                  col.names = c("","totalCount", "forwardCount", "reverseCount"))
+  out
+}
+
+```
+
+Now we can iterate through all the files and extract the counts with `lapply` using the function we just defined.
+
+```{r tidy=TRUE}
+
+allReadsCounts <- lapply(files, readTagsPerGene)
+head(allReadsCounts[[1]])
+
+```
+
+Since the library is unstranded, we only need the total reads count. We can extract it and put it in a matrix. The column names will be the sample names we created previously, and the row names will be the gene identifiers. The gene order is consistent through all the samples, so it is safe, for simplicity sake to take only one to name the matrix.
+
+```{r tidy=TRUE}
+
+totalReadsCount <- sapply(allReadsCounts, function(x) x$totalCount)
+rownames(totalReadsCount) <- row.names(allReadsCounts[[1]])
+head(totalReadsCount)
+
+```
+
+## Make a matrix with the experimental design
+
+Before the analysis, we need to normalise the data to address for the biases in the library preparation. For data normalisation, we will use the `DESeq2` package. The package also requires an additional matrix which describes the data design. The design matrix has sample names as rows and sample features as columns. The features we will use are already defined in the `time` and `type` vectors.
+
+```{r tidy=TRUE}
+
+coldata <- data.frame(condition = type, time = time)
+row.names(coldata) <- sample
+head(coldata)
+
+```
+
+# Data normalisation
+ 
+We will use the package `DESseq2` to normalise the data.
+
+```{r tidy = TRUE}
+
+dds <- DESeqDataSetFromMatrix(countData = totalReadsCount, colData = coldata, design = ~ time + condition)
+head(dds)
+dds <- DESeq(dds)
+head(dds)
+normalizedData <- counts(dds, normalized = TRUE)
+head(normalizedData)
+
+```
+
+# Differential expression with `maSigPro`
+
+In this step, we will use the `maSigPro` package to model the differential expression of genes in a unc45b mutant and control during a course of 48 hours.
+
+## Experimental design in `maSigPro` format
+
+`maSigPro` takes a specific matrix format for the experimental design. As with `DESeq2`, `maSigPro` uses the format of samples represented in rows and features in columns. The first two columns are Time and Replicate. Obviously, the Time variable represent the time points of the experiments. The Replicate column represent replicates in a way that samples with the same condition, therefore replicates, share the same number. In our case, we have 3 time points and 2 types (wild type and mutant), so in total 6 different conditions. Each condition has 2 replicates, resulting in 12 samples. The last two columns represent the Control and Mutant, each containing a binary identifier. We will load the example to show how this should look like.
+
+```{r tidy=TRUE}
+
+data(edesign.abiotic)
+data(data.abiotic)
+
+head(data.abiotic)
+head(normalizedData)
+
+head(edesign.abiotic)
+
+exp_design <- data.frame(Time = rep(c(24, 48, 72), each = 2, times = 2),
+                         Replicate = rep(c(1:6), each = 2),
+                         Control = rep(c(1, 0), each = 6),
+                         Mutant = rep(c(0, 1), each = 6),
+                         row.names = sample)
+
+head(exp_design)
+
+```
+
+## Defining the regression model
+
+With the data in the correct format, we are able now to define the regression model. Since we have three time points, our model will be a polynomial of a second degree to prevent overfitting. The regression model is defined with the function `make.design.matrix`, which takes the experimental design data frame and the polynomial degree as inputs. It outputs a list containing 
+
+```{r tidy=TRUE}
+
+design <- make.design.matrix(exp_design, degree = 2)
+str(design)
+head(design$dis)
+head(design$groups.vector)
+
+```
+
+## Finding significant genes
+
+With the `p.vector` function we construct the regression fit for each gene, and find differentialy expressed genes. As arguments, the function takes the normalised expression values list and the design matrix. This function also computes the p-value associated to the F-Statistic of the model, which is used to select significant genes. By default, maSigPro corrects this p-value for multiple comparisons by applying the linear step-up (B-H) false discovery rate (FDR) procedure.
+
+```{r tidy=TRUE, cache=TRUE}
+
+fit <- p.vector(normalizedData, design, Q = 0.05, MT.adjust = "BH", min.obs = 10, counts = TRUE)
+str(fit)
+
+```
+
+## Finding significant differences
+
+Once significant genes have been found, maSigPro applies a variable selection procedure to find significant variables for each gene. This will ultimately be used to find which are the profile differences between experimental groups. This step is done by the `T.fit()` function.
+
+```{r tidy=TRUE, cached=TRUE}
+
+tstep <- T.fit(fit, step.method = "backward", alfa = 0.05)
+
+```
+
+## Obtaining lists of significant genes
+
+Now we can obtain the list of significant genes. In this example, we will create two lists, one for all differentially expressed genes and one for the different conditions (only one in our case). Except for extracting the list of differentially expressed genes, the function `get.siggenes` filters for gene which fit in the regression model with a certain threshold. The number of differentially expressed genes can also be visualized as a Venn diagram with the `suma2Venn` function.
+
+```{r tidy=TRUE}
+
+get<-get.siggenes(tstep, vars="all")
+get.groups<-get.siggenes(tstep, vars="groups")
+suma2Venn(get.groups$summary)
+
+```
+
+## Clustering of differentially expressed genes
+
+The clustering of differentially expressed is performed with the `see.genes` function, which plots the expression of all genes in each group as well as the expression profiles of each group. There are three available clustering algorithms. In this tutorial, we are using the hierarchical clustering.
+
+```{r tidy=TRUE}
+
+out <- see.genes(get$sig.genes, color.mode = "gray", newX11 = FALSE)
+out.groups <- see.genes(get.groups$sig.genes$MutantvsControl, color.mode = "gray", newX11 = FALSE)
+
+```
+
+# Functional enrichment analysis
+
+After obtaining the list of differentially expressed genes, we can check in a specified list of genes if some group of genes is overrepresented. For that purpose, we will use the `clusterProfiler` package, and it’s function `enrichGO`. The function takes the list of genes, organism database and the sub-ontology category as its inputs. Moreover, the user ca specify the identifier type, as well as the significance thresholds (p-value and FDR rate for multiple comparison).
+
+```{r tidy=TRUE}
+
+geneList <- sort(names(out$cut[out$cut == 3]), decreasing = TRUE)
+ego <- enrichGO(gene = geneList,
+                OrgDb = org.Dr.eg.db,
+                keyType = 'ENSEMBL',
+                ont = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 0.01,
+                qvalueCutoff = 0.05)
+barplot(ego)
+
+```
