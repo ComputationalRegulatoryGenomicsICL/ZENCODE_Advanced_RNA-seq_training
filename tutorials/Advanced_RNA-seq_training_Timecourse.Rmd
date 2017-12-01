@@ -8,6 +8,7 @@ output:
     toc: true
     number_sections: true
     toc_float: true
+bibliography: ZENCODE_Advanced_RNA-seq_training.bib
 ---
 
 # Load required packages
@@ -28,7 +29,7 @@ library("clusterProfiler")
 
 # Data preparation
 
-We need to prepare the data for the analysis. This includes reading the counts for each sample and making the matrix with sample description.
+We need to prepare the data for the analysis [@RN6]. This includes reading the counts for each sample and making the matrix with sample description.
 
 ## Make a list of files
 
@@ -124,7 +125,7 @@ head(coldata)
 
 # Data normalisation
  
-We will use the package `DESseq2` to normalise the data.
+We will use the package `DESseq2` to normalise the data [@RN5][@RN4].
 
 ```{r tidy = TRUE}
 
@@ -139,7 +140,7 @@ head(normalizedData)
 
 # Differential expression with `maSigPro`
 
-In this step, we will use the `maSigPro` package to model the differential expression of genes in a unc45b mutant and control during a course of 48 hours.
+In this step, we will use the `maSigPro` package [@RN3] to model the differential expression of genes [@RN2] in a *unc45b* mutant and control during a course of 48 hours.
 
 ## Experimental design in `maSigPro` format
 
@@ -180,7 +181,7 @@ head(design$groups.vector)
 
 ## Finding significant genes
 
-With the `p.vector` function we construct the regression fit for each gene, and find differentialy expressed genes. As arguments, the function takes the normalised expression values list and the design matrix. This function also computes the p-value associated to the F-Statistic of the model, which is used to select significant genes. By default, maSigPro corrects this p-value for multiple comparisons by applying the linear step-up (B-H) false discovery rate (FDR) procedure.
+With the `p.vector` function we construct the first regression fit. The fit is done for each gene. In this way we find differentially expressed genes. As arguments, the function takes the normalised expression values list and the design matrix. Significant genes are identified using  the p-value associated to the F-Statistic of the model. p-values are corrected for multiple comparison with the linear step-up (Benjamini-Hochberg) false discovery rate (FDR) procedure.
 
 ```{r tidy=TRUE, cache=TRUE}
 
@@ -191,7 +192,7 @@ str(fit)
 
 ## Finding significant differences
 
-Once significant genes have been found, maSigPro applies a variable selection procedure to find significant variables for each gene. This will ultimately be used to find which are the profile differences between experimental groups. This step is done by the `T.fit()` function.
+Next, we use the `T.fit` function for variable selection procedure is applied for each significant gene. In this way, we find significant variables for each gene. This allow us to find profile differences between experimental groups.
 
 ```{r tidy=TRUE, cached=TRUE}
 
@@ -224,7 +225,7 @@ out.groups <- see.genes(get.groups$sig.genes$MutantvsControl, color.mode = "gray
 
 # Functional enrichment analysis
 
-After obtaining the list of differentially expressed genes, we can check in a specified list of genes if some group of genes is overrepresented. For that purpose, we will use the `clusterProfiler` package, and it’s function `enrichGO`. The function takes the list of genes, organism database and the sub-ontology category as its inputs. Moreover, the user ca specify the identifier type, as well as the significance thresholds (p-value and FDR rate for multiple comparison).
+After obtaining the list of differentially expressed genes, we can check in a specified list of genes if some group of genes is overrepresented. For that purpose, we will use the `clusterProfiler` package [@RN7], and it’s function `enrichGO`. The function takes the list of genes, organism database and the sub-ontology category as its inputs. Moreover, the user ca specify the identifier type, as well as the significance thresholds (p-value and FDR rate for multiple comparison).
 
 ```{r tidy=TRUE}
 
@@ -239,3 +240,5 @@ ego <- enrichGO(gene = geneList,
 barplot(ego)
 
 ```
+
+# References
